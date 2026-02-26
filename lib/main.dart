@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_routes.dart';
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
 
       routes: {
         ...AuthRoutes.routes,
+        ...SecretaryRoutes.routes,
         ...StudentDashboardRoutes.routes,
       },
     );

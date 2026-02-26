@@ -1,15 +1,143 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/features/auth/data/auth_api.dart';
 import 'package:sigetu/features/auth/presentation/auth_routes.dart';
+import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  static final RegExp _institutionalEmailRegex = RegExp(
+    r'^[^@\s]+@uniautonoma\.edu\.co$',
+    caseSensitive: false,
+  );
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  String _mapErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      return message.replaceFirst('Exception: ', '');
+    }
+    return message;
+  }
+
+  String _extractRoleFromToken(String token) {
+    final parts = token.split('.');
+    if (parts.length < 2) {
+      return '';
+    }
+
+    try {
+      final normalized = base64Url.normalize(parts[1]);
+      final payload = utf8.decode(base64Url.decode(normalized));
+      final data = jsonDecode(payload);
+
+      if (data is Map<String, dynamic>) {
+        final role = data['role'] ?? data['rol'];
+        if (role is String) {
+          return role.toLowerCase();
+        }
+      }
+    } catch (_) {}
+
+    return '';
+  }
+
+  void _showTopMessage(String message, {required bool isError}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..clearMaterialBanners()
+      ..hideCurrentSnackBar();
+
+    final colorScheme = Theme.of(context).colorScheme;
+
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        leading: Icon(
+          isError ? Icons.error_outline : Icons.check_circle_outline,
+          color: Colors.white,
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: isError ? colorScheme.error : colorScheme.primary,
+        actions: [
+          TextButton(
+            onPressed: messenger.hideCurrentMaterialBanner,
+            child: const Text(
+              'Cerrar',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 5), () {
+      messenger.hideCurrentMaterialBanner();
+    });
+  }
+
+  Future<void> _submitLogin() async {
+    if (_isLoading || !_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final token = await AuthApi().login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+
+      AuthSession.accessToken = token;
+
+      final role = _extractRoleFromToken(token);
+      final isSecretaryRole =
+          role == 'secretaria' || role == 'secretary' || role == 'role_secretaria';
+
+      _showTopMessage('Inicio de sesión exitoso', isError: false);
+      Navigator.pushReplacementNamed(
+        context,
+        isSecretaryRole
+            ? SecretaryRoutes.home
+            : StudentDashboardRoutes.dashboard,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showTopMessage(_mapErrorMessage(error), isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +167,12 @@ class LoginScreen extends StatelessWidget {
                   icon: Icons.email_outlined,
                   controller: _emailController,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty) {
                       return 'Ingrese su correo';
+                    }
+                    if (!_institutionalEmailRegex.hasMatch(email)) {
+                      return 'Use su correo institucional @uniautonoma.edu.co';
                     }
                     return null;
                   },
@@ -50,9 +182,13 @@ class LoginScreen extends StatelessWidget {
                   label: 'Contraseña',
                   icon: Icons.lock_outline,
                   controller: _passwordController,
+                  obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Ingrese su contraseña';
+                    }
+                    if (value.length < 8) {
+                      return 'Mínimo 8 caracteres';
                     }
                     return null;
                   },
@@ -65,21 +201,17 @@ class LoginScreen extends StatelessWidget {
                 const SizedBox(height: 22),
                 AuthButton(
                   text: 'Ingresar',
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        StudentDashboardRoutes.dashboard,
-                      );
-                    }
-                  },
+                  isLoading: _isLoading,
+                  onPressed: _submitLogin,
                 ),
 
                 // No tienes cuenta? Registrate
                 TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, AuthRoutes.register);
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.pushNamed(context, AuthRoutes.register);
+                        },
                   child: Text.rich(
                     TextSpan(
                       text: '¿No tienes cuenta? ',

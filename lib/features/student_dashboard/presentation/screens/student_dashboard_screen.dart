@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sigetu/core/widgets/section_header.dart';
-import 'package:sigetu/features/student_dashboard/presentation/screens/seleccionar_sede_screen.dart';
+import 'package:sigetu/features/headquarters/presentation/screens/seleccionar_sede_screen.dart';
 import 'package:sigetu/features/student_dashboard/presentation/widgets/dashboard_card.dart';
 import 'package:sigetu/core/theme/app_gradients.dart';
 

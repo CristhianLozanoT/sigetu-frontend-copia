@@ -5,10 +5,11 @@ class DashboardCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final LinearGradient? gradient;
-  final Color? cardColor; // color de la tarjeta
-  final Color? iconColor; // color del icono
-  final Color? textColor; // color del texto
+  final Color? cardColor;
+  final Color? iconColor;
+  final Color? textColor;
   final VoidCallback onTap;
+  final String? imagePath;
 
   const DashboardCard({
     super.key,
@@ -16,6 +17,7 @@ class DashboardCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.onTap,
+    this.imagePath,
     this.cardColor,
     this.gradient,
     this.iconColor,
@@ -35,7 +37,7 @@ class DashboardCard extends StatelessWidget {
           gradient: gradient,
           color: gradient == null
               ? (cardColor ?? colorScheme.surface)
-              : null, 
+              : null,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: (iconColor ?? colorScheme.primary).withOpacity(0.15),
@@ -48,48 +50,73 @@ class DashboardCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: (iconColor ?? colorScheme.primary).withOpacity(0.1),
+
+            if (imagePath != null) ...[
+              ClipRRect(
                 borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  imagePath!,
+                  height: 120,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               ),
-              child: Icon(
-                icon,
-                color: iconColor ?? colorScheme.primary,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: textColor ?? colorScheme.onSurface,
-                    ),
+              const SizedBox(height: 16),
+            ],
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (iconColor ?? colorScheme.primary)
+                        .withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color:
-                          textColor ?? colorScheme.onSurface.withOpacity(0.7),
-                    ),
+                  child: Icon(
+                    icon,
+                    color: iconColor ?? colorScheme.primary,
+                    size: 26,
                   ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: iconColor ?? colorScheme.primary,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: textColor ?? colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color: textColor ??
+                                  colorScheme.onSurface
+                                      .withOpacity(0.7),
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: iconColor ?? colorScheme.primary,
+                ),
+              ],
             ),
           ],
         ),
