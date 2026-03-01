@@ -27,7 +27,7 @@ class AppBottomNav extends StatelessWidget {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_month_rounded),
-          label: 'Turnos',
+          label: 'Mis Turnos',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person_rounded),

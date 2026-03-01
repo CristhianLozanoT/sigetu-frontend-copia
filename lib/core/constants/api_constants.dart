@@ -3,4 +3,20 @@ class ApiConstants {
     'API_BASE_URL',
     defaultValue: 'http://10.0.2.2:8000',
   );
+
+  static const String appointmentsWsUrlOverride = String.fromEnvironment(
+    'APPOINTMENTS_WS_URL',
+    defaultValue: '',
+  );
+
+  static String get appointmentsWsUrl {
+    if (appointmentsWsUrlOverride.isNotEmpty) {
+      return appointmentsWsUrlOverride;
+    }
+
+    final uri = Uri.parse(baseUrl);
+    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+
+    return uri.replace(scheme: scheme, path: '/appointments/ws').toString();
+  }
 }

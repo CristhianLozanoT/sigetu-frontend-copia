@@ -6,7 +6,13 @@ class StudentDashboardRoutes {
   static const seleccionarSede = '/seleccionar-sede';
 
   static Map<String, WidgetBuilder> routes = {
-    dashboard: (_) => const StudentHomeShell(),
+    dashboard: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      final initialIndex = args is Map<String, dynamic>
+          ? (args['initialIndex'] as int? ?? 0)
+          : 0;
+      return StudentHomeShell(initialIndex: initialIndex);
+    },
     seleccionarSede: (_) => const SeleccionarSedeScreen(),
   };
 }

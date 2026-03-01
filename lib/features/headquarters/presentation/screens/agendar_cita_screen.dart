@@ -8,6 +8,7 @@ import 'package:sigetu/features/headquarters/presentation/widgets/appointment_ca
 import 'package:sigetu/features/headquarters/presentation/widgets/appointment_context_select.dart';
 import 'package:sigetu/features/headquarters/presentation/widgets/appointment_picker_button.dart';
 import 'package:sigetu/features/headquarters/presentation/widgets/appointment_time_slot_picker.dart';
+import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 
 class AgendarCitaScreen extends StatefulWidget {
   const AgendarCitaScreen({super.key, required this.categoria});
@@ -92,7 +93,11 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
 
     if (!formValido) return;
 
-    if (_fechaSeleccionada == null || _horaSeleccionada == null) {
+    final fechaSeleccionada = _fechaSeleccionada;
+    final horaSeleccionada = _horaSeleccionada;
+    final contextoSeleccionado = _contextoSeleccionado;
+
+    if (fechaSeleccionada == null || horaSeleccionada == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona fecha y hora para continuar')),
@@ -100,10 +105,18 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
       return;
     }
 
+    if (contextoSeleccionado == null || contextoSeleccionado.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un contexto para continuar')),
+      );
+      return;
+    }
+
     final request = AppointmentRequest(
       category: _normalizeForApi(widget.categoria),
-      context: _normalizeForApi(_contextoSeleccionado ?? ''),
-      scheduledAt: _buildScheduledAt(_fechaSeleccionada!, _horaSeleccionada!),
+      context: _normalizeForApi(contextoSeleccionado),
+      scheduledAt: _buildScheduledAt(fechaSeleccionada, horaSeleccionada),
     );
 
     final payload = request.toJson();
@@ -121,7 +134,7 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
         builder: (dialogContext) => AlertDialog(
           title: const Text('Cita agendada'),
           content: Text(
-            'Tu cita para ${widget.categoria} (${_contextoSeleccionado ?? 'Sin contexto'}) fue registrada para el ${_formatearFecha(_fechaSeleccionada)} en el horario ${AppointmentTimeSlotPicker.formatRange(_horaSeleccionada)}.',
+            'Tu cita para ${widget.categoria} ($contextoSeleccionado) fue registrada para el ${_formatearFecha(fechaSeleccionada)} en el horario ${AppointmentTimeSlotPicker.formatRange(horaSeleccionada)}.',
           ),
           actions: [
             TextButton(
@@ -133,8 +146,14 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).pop();
-    } catch (error) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        StudentDashboardRoutes.dashboard,
+        (route) => false,
+        arguments: {'initialIndex': 1},
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Error al agendar cita: $error');
+      debugPrintStack(stackTrace: stackTrace);
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(

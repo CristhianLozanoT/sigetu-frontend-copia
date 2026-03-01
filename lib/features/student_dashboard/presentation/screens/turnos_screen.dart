@@ -1,18 +1,555 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-class TurnosScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:sigetu/core/constants/appointment_statuses.dart';
+import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
+import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
+import 'package:sigetu/features/student_dashboard/data/student_turns_api.dart';
+import 'package:sigetu/features/student_dashboard/domain/student_turn.dart';
+
+class TurnosScreen extends StatefulWidget {
   const TurnosScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          'Estás en Turnos',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+  State<TurnosScreen> createState() => _TurnosScreenState();
+}
+
+class _TurnosScreenState extends State<TurnosScreen> {
+  final _api = StudentTurnsApi();
+  final _realtime = AppointmentsRealtimeService();
+
+  bool _isLoading = true;
+  bool _isFetching = false;
+  String? _errorMessage;
+  List<StudentTurn> _turns = [];
+  final Set<int> _notifiedCallingTurnIds = <int>{};
+  int? _updatingTurnId;
+  bool _showHistory = false;
+  StreamSubscription<void>? _realtimeSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTurns();
+    _realtime.connect();
+    _realtimeSubscription = _realtime.updates.listen((_) {
+      if (!mounted) return;
+      _loadTurns(showLoader: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _realtimeSubscription?.cancel();
+    unawaited(_realtime.dispose());
+    super.dispose();
+  }
+
+  Future<void> _loadTurns({bool showLoader = true}) async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final turns = _showHistory
+          ? await _api.fetchMyTurnsHistory()
+          : await _api.fetchMyTurns();
+
+      _handleCallingSound(turns);
+
+      if (!mounted) return;
+      setState(() {
+        _turns = turns;
+        if (!showLoader) {
+          _errorMessage = null;
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      _isFetching = false;
+      if (mounted) {
+        setState(() {
+          if (showLoader) {
+            _isLoading = false;
+          }
+        });
+      }
+    }
+  }
+
+  void _handleCallingSound(List<StudentTurn> turns) {
+    if (_showHistory) return;
+
+    final callingIds = turns
+        .where(
+          (turn) => turn.status.trim().toLowerCase() == AppointmentStatuses.calling,
+        )
+        .map((turn) => turn.id)
+        .toSet();
+
+    final newCallingIds = callingIds.difference(_notifiedCallingTurnIds);
+
+    if (newCallingIds.isNotEmpty) {
+      unawaited(SystemSound.play(SystemSoundType.alert));
+      _notifiedCallingTurnIds.addAll(newCallingIds);
+    }
+
+    _notifiedCallingTurnIds.removeWhere((id) => !callingIds.contains(id));
+  }
+
+  String _formatDate(DateTime dateTime) {
+    final dd = dateTime.day.toString().padLeft(2, '0');
+    final mm = dateTime.month.toString().padLeft(2, '0');
+    final yyyy = dateTime.year;
+    return '$dd/$mm/$yyyy';
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final hh = dateTime.hour.toString().padLeft(2, '0');
+    final min = dateTime.minute.toString().padLeft(2, '0');
+    return '$hh:$min';
+  }
+
+  String _titleCase(String value) {
+    return value
+        .split('_')
+        .map((part) => part.isEmpty
+            ? part
+            : '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
+
+  bool _canEditTurn(StudentTurn turn) {
+    final normalized = turn.status.trim().toLowerCase();
+    return normalized == AppointmentStatuses.pending;
+  }
+
+  List<TimeOfDay> _buildAvailableSlots() {
+    const int startMinutes = 8 * 60;
+    const int endMinutes = 17 * 60;
+    const int breakStartMinutes = 11 * 60 + 20;
+    const int breakEndMinutes = 14 * 60 + 30;
+    const int intervalMinutes = 30;
+
+    final slots = <TimeOfDay>[];
+
+    for (
+      int minutes = startMinutes;
+      minutes + intervalMinutes <= endMinutes;
+      minutes += intervalMinutes
+    ) {
+      final slotStart = minutes;
+      final slotEnd = minutes + intervalMinutes;
+      final overlapsBreak =
+          slotStart < breakEndMinutes && slotEnd > breakStartMinutes;
+      if (overlapsBreak) continue;
+
+      slots.add(TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60));
+    }
+
+    return slots;
+  }
+
+  String _formatRange(TimeOfDay start) {
+    final startTotal = start.hour * 60 + start.minute;
+    final endTotal = startTotal + 30;
+    final end = TimeOfDay(hour: endTotal ~/ 60, minute: endTotal % 60);
+
+    String format(TimeOfDay time) {
+      final int hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+      final minute = time.minute.toString().padLeft(2, '0');
+      final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+      return '$hour12:$minute $period';
+    }
+
+    return '${format(start)} - ${format(end)}';
+  }
+
+  Future<TimeOfDay?> _pickTimeSlot(TimeOfDay initial) async {
+    final slots = _buildAvailableSlots();
+
+    return showModalBottomSheet<TimeOfDay>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  'Seleccionar horario',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 360,
+                  child: ListView.separated(
+                    itemCount: slots.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final slot = slots[index];
+                      final selected =
+                          slot.hour == initial.hour && slot.minute == initial.minute;
+                      return ListTile(
+                        title: Text(_formatRange(slot)),
+                        trailing: selected
+                            ? Icon(
+                                Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary,
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(context, slot),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Future<void> _reprogramTurn(StudentTurn turn) async {
+    if (!_canEditTurn(turn)) return;
+
+    final now = DateTime.now();
+    final initialDate = turn.scheduledAt.isBefore(now) ? now : turn.scheduledAt;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+      initialDate: initialDate,
+    );
+
+    if (!mounted || pickedDate == null) return;
+
+    final pickedTime = await _pickTimeSlot(TimeOfDay.fromDateTime(turn.scheduledAt));
+    if (!mounted || pickedTime == null) return;
+
+    final scheduledAt = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    final request = AppointmentRequest(
+      category: turn.category,
+      context: turn.context,
+      scheduledAt: scheduledAt,
+    );
+
+    setState(() => _updatingTurnId = turn.id);
+
+    try {
+      await _api.updateAppointment(appointmentId: turn.id, request: request);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Turno actualizado correctamente')),
+      );
+      await _loadTurns();
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _updatingTurnId = null);
+      }
+    }
+  }
+
+  Future<void> _cancelTurn(StudentTurn turn) async {
+    if (!_canEditTurn(turn)) return;
+
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cancelar turno'),
+          content: Text('¿Deseas cancelar el turno ${turn.turnNumber}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Sí, cancelar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || shouldCancel != true) return;
+
+    setState(() => _updatingTurnId = turn.id);
+
+    try {
+      await _api.cancelAppointment(appointmentId: turn.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Turno cancelado correctamente')),
+      );
+      await _loadTurns();
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _updatingTurnId = null);
+      }
+    }
+  }
+
+  Color _statusColor(String status, ColorScheme colorScheme) {
+    switch (status.toLowerCase()) {
+      case AppointmentStatuses.pending:
+        return Colors.orange;
+      case AppointmentStatuses.calling:
+        return colorScheme.primary;
+      case AppointmentStatuses.inAttention:
+        return colorScheme.secondary;
+      case AppointmentStatuses.attended:
+        return Colors.green;
+      case AppointmentStatuses.finished:
+        return Colors.green;
+      case AppointmentStatuses.absent:
+        return Colors.brown;
+      case AppointmentStatuses.canceled:
+        return colorScheme.error;
+      default:
+        return colorScheme.primary;
+    }
+  }
+
+  Future<void> _changeViewMode(bool showHistory) async {
+    if (_showHistory == showHistory) return;
+    setState(() => _showHistory = showHistory);
+    await _loadTurns();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mis Turnos'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Row(
+              children: [
+                Text(
+                  _showHistory ? 'Historial' : 'Actuales',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(width: 6),
+                Switch(
+                  value: _showHistory,
+                  onChanged: (value) => _changeViewMode(value),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadTurns,
+        child: Builder(
+          builder: (context) {
+            if (_isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (_errorMessage != null) {
+              return ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadTurns,
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              );
+            }
+
+            if (_turns.isEmpty) {
+              return ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  SizedBox(height: 80),
+                  Center(
+                    child: Text(
+                      _showHistory
+                          ? 'No tienes turnos en historial'
+                          : 'No tienes turnos actuales',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _turns.length,
+              itemBuilder: (context, index) {
+                final turn = _turns[index];
+                final colorScheme = Theme.of(context).colorScheme;
+                final statusColor = _statusColor(turn.status, colorScheme);
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: colorScheme.primary.withOpacity(0.12),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                turn.turnNumber,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            Chip(
+                              backgroundColor: statusColor.withOpacity(0.12),
+                              side: BorderSide(color: statusColor.withOpacity(0.35)),
+                              label: Text(
+                                _titleCase(turn.status),
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Sede: ${_titleCase(turn.sede)}'),
+                        Text('Categoría: ${_titleCase(turn.category)}'),
+                        Text('Contexto: ${_titleCase(turn.context)}'),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.event_outlined, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Programado',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text('Día: ${_formatDate(turn.scheduledAt)}'),
+                                  ),
+                                  Expanded(
+                                    child: Text('Hora: ${_formatTime(turn.scheduledAt)}'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_canEditTurn(turn))
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                onPressed: _updatingTurnId == turn.id
+                                    ? null
+                                    : () => _reprogramTurn(turn),
+                                icon: _updatingTurnId == turn.id
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.edit_calendar_outlined),
+                                label: const Text('Reprogramar'),
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                onPressed: _updatingTurnId == turn.id
+                                    ? null
+                                    : () => _cancelTurn(turn),
+                                icon: const Icon(Icons.cancel_outlined),
+                                style: TextButton.styleFrom(
+                                  foregroundColor:
+                                      Theme.of(context).colorScheme.error,
+                                ),
+                                label: const Text('Cancelar'),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
     );
