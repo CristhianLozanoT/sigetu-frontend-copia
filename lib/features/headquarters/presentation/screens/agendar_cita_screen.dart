@@ -1,13 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/data/appointment_api.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_contexts.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
-import 'package:sigetu/features/headquarters/presentation/widgets/appointment_category_header.dart';
-import 'package:sigetu/features/headquarters/presentation/widgets/appointment_context_select.dart';
-import 'package:sigetu/features/headquarters/presentation/widgets/appointment_picker_button.dart';
-import 'package:sigetu/features/headquarters/presentation/widgets/appointment_time_slot_picker.dart';
+import 'package:sigetu/features/headquarters/presentation/widgets/appointment_calendar_panel.dart';
+import 'package:sigetu/features/headquarters/presentation/widgets/appointment_category_context_card.dart';
+import 'package:sigetu/features/headquarters/presentation/widgets/appointment_confirmation_dialog.dart';
+import 'package:sigetu/features/headquarters/presentation/widgets/appointment_time_slots_panel.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 
 class AgendarCitaScreen extends StatefulWidget {
@@ -22,34 +23,144 @@ class AgendarCitaScreen extends StatefulWidget {
 class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   final _formKey = GlobalKey<FormState>();
   final _appointmentApi = AppointmentApi();
+  static const int _slotIntervalMinutes = 30;
+  static const int _startMinutes = 8 * 60;
+  static const int _endMinutes = 18 * 60;
+  static const int _breakStartMinutes = 12 * 60;
+  static const int _breakEndMinutes = 13 * 60;
 
   DateTime? _fechaSeleccionada;
   TimeOfDay? _horaSeleccionada;
   String? _contextoSeleccionado;
   bool _isSubmitting = false;
+  int _currentStep = 1;
+  late DateTime _displayedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _displayedMonth = DateTime(now.year, now.month);
+  }
 
   List<String> get _contextosDisponibles =>
       AppointmentContexts.forCategory(widget.categoria);
 
-  Future<void> _seleccionarFecha() async {
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool _isDateSelectable(DateTime date) {
+    final today = DateTime.now();
+    final min = DateTime(today.year, today.month, today.day);
+    final max = DateTime(today.year + 2, today.month, today.day);
+    return !date.isBefore(min) && !date.isAfter(max);
+  }
+
+  void _changeMonth(int offset) {
+    final candidate = DateTime(_displayedMonth.year, _displayedMonth.month + offset);
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      firstDate: now,
-      lastDate: DateTime(now.year + 2),
-      initialDate: _fechaSeleccionada ?? now,
-    );
+    final minMonth = DateTime(now.year, now.month);
+    final maxMonth = DateTime(now.year + 2, now.month);
 
-    if (!mounted) return;
-
-    if (picked != null) {
-      setState(() => _fechaSeleccionada = picked);
+    if (candidate.isBefore(minMonth) || candidate.isAfter(maxMonth)) {
+      return;
     }
+
+    setState(() => _displayedMonth = candidate);
+  }
+
+  void _selectDay(DateTime date) {
+    if (!_isDateSelectable(date) || _isSubmitting) return;
+    setState(() => _fechaSeleccionada = date);
+  }
+
+  List<TimeOfDay> _buildTimeSlots() {
+    final slots = <TimeOfDay>[];
+
+    for (
+      int minutes = _startMinutes;
+      minutes + _slotIntervalMinutes <= _endMinutes;
+      minutes += _slotIntervalMinutes
+    ) {
+      final slotStart = minutes;
+      final slotEnd = minutes + _slotIntervalMinutes;
+      final overlapsBreak =
+          slotStart < _breakEndMinutes && slotEnd > _breakStartMinutes;
+
+      if (overlapsBreak) continue;
+
+      slots.add(TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60));
+    }
+
+    return slots;
+  }
+
+  bool _isSlotEnabled(TimeOfDay slot) {
+    if (_isSubmitting || _fechaSeleccionada == null) return false;
+
+    final selectedDate = _fechaSeleccionada!;
+    final now = DateTime.now();
+
+    if (_isSameDate(selectedDate, now)) {
+      final slotDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        slot.hour,
+        slot.minute,
+      );
+      return slotDateTime.isAfter(now);
+    }
+
+    return true;
+  }
+
+  void _selectSlot(TimeOfDay slot) {
+    if (!_isSlotEnabled(slot)) return;
+    setState(() => _horaSeleccionada = slot);
+  }
+
+  String _formatSlot(TimeOfDay slot) {
+    final rawHour = slot.hour;
+    final minute = slot.minute.toString().padLeft(2, '0');
+    final period = rawHour >= 12 ? 'PM' : 'AM';
+    final hour12 = (rawHour % 12 == 0 ? 12 : rawHour % 12).toString();
+    return '$hour12:$minute $period';
+  }
+
+  String _formatRange(TimeOfDay start, {int intervalMinutes = 30}) {
+    final startTotalMinutes = start.hour * 60 + start.minute;
+    final endTotalMinutes = startTotalMinutes + intervalMinutes;
+    final endTime = TimeOfDay(
+      hour: (endTotalMinutes ~/ 60) % 24,
+      minute: endTotalMinutes % 60,
+    );
+    return '${_formatSlot(start)} - ${_formatSlot(endTime)}';
   }
 
   String _formatearFecha(DateTime? fecha) {
     if (fecha == null) return 'Seleccionar fecha';
     return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+
+  String _formatearFechaLarga(DateTime fecha) {
+    const monthNames = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+
+    return '${fecha.day} de ${monthNames[fecha.month - 1]}, ${fecha.year}';
   }
 
   DateTime _buildScheduledAt(DateTime fecha, TimeOfDay hora) {
@@ -86,12 +197,74 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     return normalized.trim().toLowerCase();
   }
 
+  void _goToDateTimeStep() {
+    if (_isSubmitting) return;
+
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
+
+    if (_contextoSeleccionado == null || _contextoSeleccionado!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un contexto para continuar')),
+      );
+      return;
+    }
+
+    setState(() => _currentStep = 2);
+  }
+
+  void _goBackToContextStep() {
+    if (_isSubmitting) return;
+    setState(() => _currentStep = 1);
+  }
+
+  bool _validateAppointmentSelection() {
+    final formValido = _formKey.currentState?.validate() ?? false;
+    if (!formValido) return false;
+
+    if (_fechaSeleccionada == null || _horaSeleccionada == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona fecha y hora para continuar')),
+      );
+      return false;
+    }
+
+    if (_contextoSeleccionado == null || _contextoSeleccionado!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un contexto para continuar')),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _confirmarYAgendar() async {
+    if (_isSubmitting) return;
+
+    if (!_validateAppointmentSelection()) return;
+
+    final fechaSeleccionada = _fechaSeleccionada!;
+    final horaSeleccionada = _horaSeleccionada!;
+    final contextoSeleccionado = _contextoSeleccionado!;
+
+    final shouldSchedule = await AppointmentConfirmationDialog.show(
+      context: context,
+      area: widget.categoria,
+      attentionType: contextoSeleccionado,
+      formattedDate: _formatearFechaLarga(fechaSeleccionada),
+      formattedTime: _formatSlot(horaSeleccionada),
+    );
+
+    if (!shouldSchedule || !mounted) return;
+
+    await _agendarCita();
+  }
+
   Future<void> _agendarCita() async {
     if (_isSubmitting) return;
 
-    final formValido = _formKey.currentState?.validate() ?? false;
-
-    if (!formValido) return;
+    if (!_validateAppointmentSelection()) return;
 
     final fechaSeleccionada = _fechaSeleccionada;
     final horaSeleccionada = _horaSeleccionada;
@@ -125,24 +298,13 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      await _appointmentApi.createAppointment(request);
+      final successMessage = await _appointmentApi.createAppointment(request);
 
       if (!mounted) return;
 
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Cita agendada'),
-          content: Text(
-            'Tu cita para ${widget.categoria} ($contextoSeleccionado) fue registrada para el ${_formatearFecha(fechaSeleccionada)} en el horario ${AppointmentTimeSlotPicker.formatRange(horaSeleccionada)}.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Aceptar'),
-            ),
-          ],
-        ),
+      await AppToast.showSuccess(
+        context,
+        message: successMessage ?? 'La cita se agendó correctamente.',
       );
 
       if (!mounted) return;
@@ -156,8 +318,9 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
       debugPrintStack(stackTrace: stackTrace);
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      await AppToast.showError(
+        context,
+        message: message,
       );
     } finally {
       if (mounted) {
@@ -168,8 +331,21 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedDateMissing = _fechaSeleccionada == null;
+    final selectedTimeMissing = _horaSeleccionada == null;
+    final isContextStep = _currentStep == 1;
+    final isDateTimeStep = _currentStep == 2;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Agendar Cita')),
+      appBar: AppBar(
+        title: Text(isContextStep ? 'Agendar Cita - Paso 1' : 'Agendar Cita - Paso 2'),
+        leading: isDateTimeStep
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: _goBackToContextStep,
+              )
+            : null,
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -177,44 +353,100 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
             key: _formKey,
             child: ListView(
               children: [
-
-                const SizedBox(height: 16),
-                AppointmentCategoryHeader(category: widget.categoria),
-                const SizedBox(height: 14),
-                AppointmentContextSelect(
-                  value: _contextoSeleccionado,
-                  options: _contextosDisponibles,
-                  onChanged: (value) => setState(() => _contextoSeleccionado = value),
-                ),
-                const SizedBox(height: 8),
-                AppointmentPickerButton(
-                  onPressed: _isSubmitting ? null : _seleccionarFecha,
-                  icon: Icons.calendar_today_outlined,
-                  label: _formatearFecha(_fechaSeleccionada),
-                ),
-                const SizedBox(height: 10),
-                AppointmentTimeSlotPicker(
-                  selectedTime: _horaSeleccionada,
-                  enabled: !_isSubmitting,
-                  onChanged: (hora) => setState(() => _horaSeleccionada = hora),
-                ),
-                const SizedBox(height: 24),
-
-                const SizedBox(height: 18),
-
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _agendarCita,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Agendar cita'),
+                if (isContextStep) ...[
+                  Text(
+                    'Tipo de atención',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Selecciona el motivo de tu visita.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 14),
+                  AppointmentCategoryContextCard(
+                    selectedContext: _contextoSeleccionado,
+                    contextOptions: _contextosDisponibles,
+                    onContextChanged: (value) =>
+                        setState(() => _contextoSeleccionado = value),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _goToDateTimeStep,
+                      child: const Text('Continuar'),
+                    ),
+                  ),
+                ],
+
+                if (isDateTimeStep) ...[
+                  Text(
+                    'Fecha y horario',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Elige el día y hora de tu turno',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 14),
+                  AppointmentCalendarPanel(
+                    displayedMonth: _displayedMonth,
+                    selectedDate: _fechaSeleccionada,
+                    onMonthChange: _changeMonth,
+                    onDateSelected: _selectDay,
+                    isDateSelectable: _isDateSelectable,
+                  ),
+                  const SizedBox(height: 12),
+                  AppointmentTimeSlotsPanel(
+                    timeSlots: _buildTimeSlots(),
+                    selectedTime: _horaSeleccionada,
+                    isSlotEnabled: _isSlotEnabled,
+                    onSelectSlot: _selectSlot,
+                    formatSlot: _formatSlot,
+                  ),
+                  if (selectedDateMissing || selectedTimeMissing) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      selectedDateMissing
+                          ? 'Selecciona una fecha para habilitar horarios.'
+                          : 'Selecciona un horario para continuar.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isSubmitting ? null : _goBackToContextStep,
+                          child: const Text('Atrás'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _isSubmitting ? null : _confirmarYAgendar,
+                            child: _isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('Revisar'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

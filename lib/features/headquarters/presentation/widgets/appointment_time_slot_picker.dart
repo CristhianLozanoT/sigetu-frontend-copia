@@ -94,7 +94,7 @@ class AppointmentTimeSlotPicker extends StatelessWidget {
                   height: 380,
                   child: ListView.separated(
                     itemCount: slots.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final slot = slots[index];
                       final isSelected =

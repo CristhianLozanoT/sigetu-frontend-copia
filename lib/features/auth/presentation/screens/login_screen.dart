@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/auth/data/auth_api.dart';
 import 'package:sigetu/features/auth/presentation/auth_routes.dart';
 import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
@@ -9,7 +10,7 @@ import '../widgets/auth_button.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 
 class LoginScreen extends StatefulWidget {
-  LoginScreen({super.key});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -63,43 +64,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return '';
   }
 
-  void _showTopMessage(String message, {required bool isError}) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..clearMaterialBanners()
-      ..hideCurrentSnackBar();
-
-    final colorScheme = Theme.of(context).colorScheme;
-
-    messenger.showMaterialBanner(
-      MaterialBanner(
-        leading: Icon(
-          isError ? Icons.error_outline : Icons.check_circle_outline,
-          color: Colors.white,
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: isError ? colorScheme.error : colorScheme.primary,
-        actions: [
-          TextButton(
-            onPressed: messenger.hideCurrentMaterialBanner,
-            child: const Text(
-              'Cerrar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 5), () {
-      messenger.hideCurrentMaterialBanner();
-    });
+  Future<void> _showRequestMessage(String message, {required bool isError}) {
+    if (isError) {
+      return AppToast.showError(context, message: message);
+    }
+    return AppToast.showSuccess(context, message: message);
   }
 
   Future<void> _submitLogin() async {
@@ -110,19 +79,22 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final token = await AuthApi().login(
+      final loginResponse = await AuthApi().login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
       if (!mounted) return;
 
-      AuthSession.accessToken = token;
+      AuthSession.accessToken = loginResponse.token;
 
-      final role = _extractRoleFromToken(token);
+      final role = _extractRoleFromToken(loginResponse.token);
       final isSecretaryRole =
           role == 'secretaria' || role == 'secretary' || role == 'role_secretaria';
 
-      _showTopMessage('Inicio de sesión exitoso', isError: false);
+      await _showRequestMessage(
+        loginResponse.message ?? 'Inicio de sesión exitoso',
+        isError: false,
+      );
       Navigator.pushReplacementNamed(
         context,
         isSecretaryRole
@@ -131,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      _showTopMessage(_mapErrorMessage(error), isError: true);
+      await _showRequestMessage(_mapErrorMessage(error), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

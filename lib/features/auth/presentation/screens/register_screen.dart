@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/auth/data/auth_api.dart';
 import 'package:sigetu/features/auth/domain/user_register.dart';
 import 'package:sigetu/features/auth/presentation/auth_routes.dart';
@@ -6,7 +7,7 @@ import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
 
 class RegisterScreen extends StatefulWidget {
-  RegisterScreen({super.key});
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -49,42 +50,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return message;
   }
 
-  void _showTopMessage(String message, {required bool isError}) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..clearMaterialBanners()
-      ..hideCurrentSnackBar();
-
-    final colorScheme = Theme.of(context).colorScheme;
-
-    messenger.showMaterialBanner(
-      MaterialBanner(
-        leading: const Icon(Icons.info_outline, color: Colors.white),
-        content: Text(
-          message,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: isError
-            ? colorScheme.error
-            : colorScheme.primary,
-        actions: [
-          TextButton(
-            onPressed: messenger.hideCurrentMaterialBanner,
-            child: const Text(
-              'Cerrar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 3), () {
-      messenger.hideCurrentMaterialBanner();
-    });
+  Future<void> _showRequestMessage(String message, {required bool isError}) {
+    if (isError) {
+      return AppToast.showError(context, message: message);
+    }
+    return AppToast.showSuccess(context, message: message);
   }
 
   Future<void> _submitRegister() async {
@@ -102,13 +72,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     try {
-      await AuthApi().register(user);
+      final successMessage = await AuthApi().register(user);
       if (!mounted) return;
-      _showTopMessage('Registro exitoso', isError: false);
+      await _showRequestMessage(
+        successMessage ?? 'Registro exitoso',
+        isError: false,
+      );
       Navigator.pushReplacementNamed(context, AuthRoutes.login);
     } catch (error) {
       if (!mounted) return;
-      _showTopMessage(_mapErrorMessage(error), isError: true);
+      await _showRequestMessage(_mapErrorMessage(error), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -182,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       DropdownButtonFormField<String>(
-                        value: _academicProgram,
+                        initialValue: _academicProgram,
                         decoration: const InputDecoration(
                           labelText: 'Programa académico',
                           border: OutlineInputBorder(),

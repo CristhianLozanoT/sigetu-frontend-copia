@@ -19,19 +19,34 @@ class SecretaryAppointment {
   final DateTime createdAt;
   final DateTime scheduledAt;
 
+  static DateTime _parseDate(dynamic value) {
+    if (value == null) {
+      return DateTime.now();
+    }
+
+    final raw = value.toString();
+    return DateTime.tryParse(raw)?.toLocal() ?? DateTime.now();
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
   factory SecretaryAppointment.fromJson(Map<String, dynamic> json) {
-    final createdAt = DateTime.parse(json['created_at'] as String).toLocal();
-    final scheduledAtRaw = json['scheduled_at']?.toString();
+    final createdAt = _parseDate(json['created_at']);
+    final scheduledAt = _parseDate(json['scheduled_at']);
 
     return SecretaryAppointment(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       studentName: (json['student_name'] ?? '').toString(),
-      category: json['category'] as String,
-      context: json['context'] as String,
-      status: json['status'] as String,
-      turnNumber: json['turn_number'] as String,
+      category: (json['category'] ?? '').toString(),
+      context: (json['context'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      turnNumber: (json['turn_number'] ?? '').toString(),
       createdAt: createdAt,
-      scheduledAt: DateTime.parse(scheduledAtRaw as String).toLocal(),
+      scheduledAt: scheduledAt,
     );
   }
 }

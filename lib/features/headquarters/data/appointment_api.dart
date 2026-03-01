@@ -30,7 +30,22 @@ class AppointmentApi {
     return 'Error desconocido';
   }
 
-  Future<void> createAppointment(AppointmentRequest request) async {
+  String? _extractSuccessMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+
+      if (body is Map<String, dynamic>) {
+        final message = body['message'] ?? body['detail'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  Future<String?> createAppointment(AppointmentRequest request) async {
     if (!AuthSession.hasToken) {
       throw Exception('No autenticado: se requiere token');
     }
@@ -47,7 +62,7 @@ class AppointmentApi {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return;
+      return _extractSuccessMessage(response);
     }
 
     if (response.statusCode == 400 ||

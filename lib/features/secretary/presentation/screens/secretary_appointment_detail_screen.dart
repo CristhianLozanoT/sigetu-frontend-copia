@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/secretary/data/secretary_appointments_api.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment_detail.dart';
 import 'package:sigetu/features/secretary/presentation/widgets/secretary_status_action_button.dart';
@@ -143,7 +144,7 @@ class _SecretaryAppointmentDetailScreenState
     setState(() => _updatingStatus = status);
 
     try {
-      await _api.updateAppointmentStatus(
+      final successMessage = await _api.updateAppointmentStatus(
         appointmentId: widget.detail.id,
         status: status,
       );
@@ -155,16 +156,23 @@ class _SecretaryAppointmentDetailScreenState
       });
 
       if (closeOnSuccess) {
-        Navigator.of(context).pop(status);
+        Navigator.of(context).pop({
+          'status': status,
+          'message': successMessage,
+        });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Turno cambiado a ${_statusLabel(status)}')),
+        await AppToast.showSuccess(
+          context,
+          message: successMessage ?? 'Turno cambiado a ${_statusLabel(status)}',
         );
       }
     } catch (error) {
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      await AppToast.showError(
+        context,
+        message: message,
+      );
       setState(() => _updatingStatus = null);
     }
   }

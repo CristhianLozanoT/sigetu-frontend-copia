@@ -36,6 +36,20 @@ class SecretaryAppointmentsApi {
     return 'Error desconocido';
   }
 
+  String? _extractSuccessMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        final message = body['message'] ?? body['detail'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
   Future<List<SecretaryAppointment>> fetchQueueAppointments() async {
     if (!AuthSession.hasToken) {
       throw Exception('No autenticado: se requiere token');
@@ -79,7 +93,7 @@ class SecretaryAppointmentsApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<void> callTurn({required int appointmentId}) async {
+  Future<String?> callTurn({required int appointmentId}) async {
     await updateAppointmentStatus(
       appointmentId: appointmentId,
       status: AppointmentStatuses.calling,
@@ -121,7 +135,7 @@ class SecretaryAppointmentsApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<void> updateAppointmentStatus({
+  Future<String?> updateAppointmentStatus({
     required int appointmentId,
     required String status,
   }) async {
@@ -138,7 +152,7 @@ class SecretaryAppointmentsApi {
     );
 
     if (response.statusCode == 200 || response.statusCode == 204) {
-      return;
+      return _extractSuccessMessage(response);
     }
 
     if (response.statusCode == 400 ||

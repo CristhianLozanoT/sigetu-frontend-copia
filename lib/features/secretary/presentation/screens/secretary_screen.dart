@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
 import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/secretary/data/secretary_appointments_api.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment.dart';
-import 'package:sigetu/features/secretary/domain/secretary_appointment_detail.dart';
 import 'package:sigetu/features/secretary/presentation/screens/secretary_appointment_detail_screen.dart';
 
 class SecretaryScreen extends StatefulWidget {
@@ -191,26 +191,32 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
       final detail = await _api.fetchAppointmentDetail(appointmentId: appointment.id);
       if (!mounted) return;
 
-      final updatedStatus = await Navigator.of(context).push<String>(
+      final updateResult = await Navigator.of(context).push<Map<String, dynamic>>(
         MaterialPageRoute(
           builder: (_) => SecretaryAppointmentDetailScreen(detail: detail),
         ),
       );
 
       if (!mounted) return;
+      final updatedStatus = updateResult?['status']?.toString();
+      final backendMessage = updateResult?['message']?.toString();
+
       if (updatedStatus != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Turno ${detail.turnNumber}: ${_statusLabel(updatedStatus)}'),
-          ),
+        await AppToast.showSuccess(
+          context,
+          message:
+              backendMessage?.trim().isNotEmpty == true
+                  ? backendMessage!
+                  : 'Turno ${detail.turnNumber}: ${_statusLabel(updatedStatus)}',
         );
       }
       await _loadAppointments(showLoader: false);
     } catch (error) {
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      await AppToast.showError(
+        context,
+        message: message,
       );
     } finally {
       if (mounted) {

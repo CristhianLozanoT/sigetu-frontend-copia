@@ -23,17 +23,32 @@ class SecretaryAppointmentDetail {
   final DateTime scheduledAt;
   final SecretaryStudentDetail student;
 
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static DateTime _parseDate(dynamic value) {
+    if (value == null) {
+      return DateTime.now();
+    }
+
+    final raw = value.toString();
+    return DateTime.tryParse(raw)?.toLocal() ?? DateTime.now();
+  }
+
   factory SecretaryAppointmentDetail.fromJson(Map<String, dynamic> json) {
     return SecretaryAppointmentDetail(
-      id: json['id'] as int,
-      studentId: json['student_id'] as int,
+      id: _parseInt(json['id']),
+      studentId: _parseInt(json['student_id']),
       turnNumber: (json['turn_number'] ?? '').toString(),
       sede: (json['sede'] ?? '').toString(),
       category: (json['category'] ?? '').toString(),
       context: (json['context'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),
-      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
-      scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
+      createdAt: _parseDate(json['created_at']),
+      scheduledAt: _parseDate(json['scheduled_at']),
       student: SecretaryStudentDetail.fromJson(
         (json['student'] as Map<String, dynamic>? ?? const {}),
       ),

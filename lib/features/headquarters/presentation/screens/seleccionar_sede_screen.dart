@@ -50,7 +50,7 @@ class SeleccionarSedeScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             DashboardCard(
-              title: 'Admisiones',
+              title: 'Admisiones y mercadeo',
               subtitle: 'Procesos de inscripción y matrícula',
               imagePath: 'assets/images/asistencia_estudiantil.png',
               icon: Icons.how_to_reg_outlined,
@@ -59,16 +59,6 @@ class SeleccionarSedeScreen extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: 16),
-
-            DashboardCard(
-              title: 'Mercadeo',
-              subtitle: 'Información institucional y eventos',
-              icon: Icons.campaign_outlined,
-              onTap: () {
-                _irASiguiente(context, 'Mercadeo');
-              },
-            ),
           ],
         ),
       ),

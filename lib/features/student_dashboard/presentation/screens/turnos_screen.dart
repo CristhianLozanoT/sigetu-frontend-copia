@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
 import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
 import 'package:sigetu/features/student_dashboard/data/student_turns_api.dart';
 import 'package:sigetu/features/student_dashboard/domain/student_turn.dart';
+import 'package:sigetu/features/student_dashboard/presentation/widgets/student_turn_card.dart';
 
 class TurnosScreen extends StatefulWidget {
   const TurnosScreen({super.key});
@@ -114,9 +116,11 @@ class _TurnosScreenState extends State<TurnosScreen> {
   }
 
   String _formatTime(DateTime dateTime) {
-    final hh = dateTime.hour.toString().padLeft(2, '0');
-    final min = dateTime.minute.toString().padLeft(2, '0');
-    return '$hh:$min';
+    final time = TimeOfDay.fromDateTime(dateTime);
+    final hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour12:$minute $period';
   }
 
   String _titleCase(String value) {
@@ -199,7 +203,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
                   height: 360,
                   child: ListView.separated(
                     itemCount: slots.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final slot = slots[index];
                       final selected =
@@ -260,17 +264,22 @@ class _TurnosScreenState extends State<TurnosScreen> {
     setState(() => _updatingTurnId = turn.id);
 
     try {
-      await _api.updateAppointment(appointmentId: turn.id, request: request);
+      final successMessage = await _api.updateAppointment(
+        appointmentId: turn.id,
+        request: request,
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Turno actualizado correctamente')),
+      await AppToast.showSuccess(
+        context,
+        message: successMessage ?? 'Turno actualizado correctamente',
       );
       await _loadTurns();
     } catch (error) {
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      await AppToast.showError(
+        context,
+        message: message,
       );
     } finally {
       if (mounted) {
@@ -307,17 +316,19 @@ class _TurnosScreenState extends State<TurnosScreen> {
     setState(() => _updatingTurnId = turn.id);
 
     try {
-      await _api.cancelAppointment(appointmentId: turn.id);
+      final successMessage = await _api.cancelAppointment(appointmentId: turn.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Turno cancelado correctamente')),
+      await AppToast.showSuccess(
+        context,
+        message: successMessage ?? 'Turno cancelado correctamente',
       );
       await _loadTurns();
     } catch (error) {
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      await AppToast.showError(
+        context,
+        message: message,
       );
     } finally {
       if (mounted) {
@@ -335,7 +346,6 @@ class _TurnosScreenState extends State<TurnosScreen> {
       case AppointmentStatuses.inAttention:
         return colorScheme.secondary;
       case AppointmentStatuses.attended:
-        return Colors.green;
       case AppointmentStatuses.finished:
         return Colors.green;
       case AppointmentStatuses.absent:
@@ -353,6 +363,102 @@ class _TurnosScreenState extends State<TurnosScreen> {
     await _loadTurns();
   }
 
+  Widget _buildViewModeToggle(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isHistory = _showHistory;
+
+    return SizedBox(
+      width: 220,
+      height: 46,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final selectorWidth = (constraints.maxWidth - 8) / 2;
+
+          return Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  scheme.primary,
+                  scheme.secondary,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Stack(
+              children: [
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment: isHistory
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Container(
+                    width: selectorWidth,
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () => _changeViewMode(false),
+                          child: Center(
+                            child: Text(
+                              'Actuales',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: isHistory
+                                        ? scheme.onPrimary
+                                        : scheme.primary,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () => _changeViewMode(true),
+                          child: Center(
+                            child: Text(
+                              'Historial',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: isHistory
+                                        ? scheme.primary
+                                        : scheme.onPrimary,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -361,19 +467,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Row(
-              children: [
-                Text(
-                  _showHistory ? 'Historial' : 'Actuales',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 6),
-                Switch(
-                  value: _showHistory,
-                  onChanged: (value) => _changeViewMode(value),
-                ),
-              ],
-            ),
+            child: _buildViewModeToggle(context),
           ),
         ],
       ),
@@ -421,131 +515,25 @@ class _TurnosScreenState extends State<TurnosScreen> {
                 ],
               );
             }
-
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _turns.length,
               itemBuilder: (context, index) {
                 final turn = _turns[index];
-                final colorScheme = Theme.of(context).colorScheme;
-                final statusColor = _statusColor(turn.status, colorScheme);
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: colorScheme.primary.withOpacity(0.12),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                turn.turnNumber,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            Chip(
-                              backgroundColor: statusColor.withOpacity(0.12),
-                              side: BorderSide(color: statusColor.withOpacity(0.35)),
-                              label: Text(
-                                _titleCase(turn.status),
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Sede: ${_titleCase(turn.sede)}'),
-                        Text('Categoría: ${_titleCase(turn.category)}'),
-                        Text('Contexto: ${_titleCase(turn.context)}'),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.event_outlined, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Programado',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text('Día: ${_formatDate(turn.scheduledAt)}'),
-                                  ),
-                                  Expanded(
-                                    child: Text('Hora: ${_formatTime(turn.scheduledAt)}'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (_canEditTurn(turn))
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton.icon(
-                                onPressed: _updatingTurnId == turn.id
-                                    ? null
-                                    : () => _reprogramTurn(turn),
-                                icon: _updatingTurnId == turn.id
-                                    ? const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(Icons.edit_calendar_outlined),
-                                label: const Text('Reprogramar'),
-                              ),
-                              const SizedBox(width: 4),
-                              TextButton.icon(
-                                onPressed: _updatingTurnId == turn.id
-                                    ? null
-                                    : () => _cancelTurn(turn),
-                                icon: const Icon(Icons.cancel_outlined),
-                                style: TextButton.styleFrom(
-                                  foregroundColor:
-                                      Theme.of(context).colorScheme.error,
-                                ),
-                                label: const Text('Cancelar'),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
+                final statusColor = _statusColor(
+                  turn.status,
+                  Theme.of(context).colorScheme,
+                );
+                return StudentTurnCard(
+                  turn: turn,
+                  statusLabel: _titleCase(turn.status),
+                  statusColor: statusColor,
+                  formattedDate: _formatDate(turn.scheduledAt),
+                  formattedTime: _formatTime(turn.scheduledAt),
+                  canEdit: _canEditTurn(turn),
+                  isUpdating: _updatingTurnId == turn.id,
+                  onReprogram: () => _reprogramTurn(turn),
+                  onCancel: () => _cancelTurn(turn),
                 );
               },
             );

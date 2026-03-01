@@ -21,17 +21,32 @@ class StudentTurn {
   final DateTime createdAt;
   final DateTime scheduledAt;
 
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static DateTime _parseDate(dynamic value) {
+    if (value == null) {
+      return DateTime.now();
+    }
+
+    final raw = value.toString();
+    return DateTime.tryParse(raw) ?? DateTime.now();
+  }
+
   factory StudentTurn.fromJson(Map<String, dynamic> json) {
     return StudentTurn(
-      id: json['id'] as int,
-      studentId: json['student_id'] as int,
-      sede: json['sede'] as String,
-      category: json['category'] as String,
-      context: json['context'] as String,
-      status: json['status'] as String,
-      turnNumber: json['turn_number'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      scheduledAt: DateTime.parse(json['scheduled_at'] as String),
+      id: _parseInt(json['id']),
+      studentId: _parseInt(json['student_id']),
+      sede: (json['sede'] ?? '').toString(),
+      category: (json['category'] ?? '').toString(),
+      context: (json['context'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      turnNumber: (json['turn_number'] ?? '').toString(),
+      createdAt: _parseDate(json['created_at']),
+      scheduledAt: _parseDate(json['scheduled_at']),
     );
   }
 }

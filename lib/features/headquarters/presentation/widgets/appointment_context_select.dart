@@ -15,9 +15,12 @@ class AppointmentContextSelect extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
+      isExpanded: true,
       decoration: const InputDecoration(
-        labelText: 'Contexto',
+        labelText: 'Contexto de la cita',
+        hintText: 'Selecciona el contexto',
+        prefixIcon: Icon(Icons.topic_outlined),
         border: OutlineInputBorder(),
       ),
       items: options

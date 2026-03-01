@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/theme/appointment_context_palette.dart';
 
 class AppTheme {
   // LIGHT COLORS
@@ -73,6 +74,10 @@ class AppTheme {
       bodyLarge: TextStyle(color: _textPrimary),
       bodyMedium: TextStyle(color: _textSecondary),
     ),
+
+    extensions: const <ThemeExtension<dynamic>>[
+      AppointmentContextPalette.defaults,
+    ],
   );
 
   // Tema oscuro
@@ -131,5 +136,9 @@ class AppTheme {
       bodyLarge: TextStyle(color: _darkTextPrimary),
       bodyMedium: TextStyle(color: _darkTextSecondary),
     ),
+
+    extensions: const <ThemeExtension<dynamic>>[
+      AppointmentContextPalette.defaults,
+    ],
   );
 }

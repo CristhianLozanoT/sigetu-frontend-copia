@@ -38,6 +38,20 @@ class StudentTurnsApi {
     return 'Error desconocido';
   }
 
+  String? _extractSuccessMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        final message = body['message'] ?? body['detail'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
   Future<List<StudentTurn>> fetchMyTurns() async {
     return _fetchTurnsByPath(endpointPath);
   }
@@ -89,7 +103,7 @@ class StudentTurnsApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<void> updateAppointment({
+  Future<String?> updateAppointment({
     required int appointmentId,
     required AppointmentRequest request,
   }) async {
@@ -106,7 +120,7 @@ class StudentTurnsApi {
     );
 
     if (response.statusCode == 200 || response.statusCode == 204) {
-      return;
+      return _extractSuccessMessage(response);
     }
 
     if (response.statusCode == 400 ||
@@ -121,7 +135,7 @@ class StudentTurnsApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<void> cancelAppointment({required int appointmentId}) async {
+  Future<String?> cancelAppointment({required int appointmentId}) async {
     if (!AuthSession.hasToken) {
       throw Exception('No autenticado: se requiere token');
     }
@@ -134,7 +148,7 @@ class StudentTurnsApi {
     );
 
     if (response.statusCode == 200 || response.statusCode == 204) {
-      return;
+      return _extractSuccessMessage(response);
     }
 
     if (response.statusCode == 400 ||
