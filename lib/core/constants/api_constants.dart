@@ -1,7 +1,7 @@
 class ApiConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'http://10.240.178.191:8000',
   );
 
   static const String appointmentsWsUrlOverride = String.fromEnvironment(

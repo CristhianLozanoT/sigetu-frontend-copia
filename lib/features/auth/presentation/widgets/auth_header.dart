@@ -8,6 +8,7 @@ class AuthHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
+
   });
 
   @override
