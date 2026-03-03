@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
 import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
+import 'package:sigetu/core/utils/app_date_formatter.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
 import 'package:sigetu/features/student_dashboard/data/student_turns_api.dart';
@@ -108,21 +109,6 @@ class _TurnosScreenState extends State<TurnosScreen> {
     _notifiedCallingTurnIds.removeWhere((id) => !callingIds.contains(id));
   }
 
-  String _formatDate(DateTime dateTime) {
-    final dd = dateTime.day.toString().padLeft(2, '0');
-    final mm = dateTime.month.toString().padLeft(2, '0');
-    final yyyy = dateTime.year;
-    return '$dd/$mm/$yyyy';
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final time = TimeOfDay.fromDateTime(dateTime);
-    final hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$hour12:$minute $period';
-  }
-
   String _titleCase(String value) {
     return value
         .split('_')
@@ -163,23 +149,15 @@ class _TurnosScreenState extends State<TurnosScreen> {
     return slots;
   }
 
-  String _formatRange(TimeOfDay start) {
-    final startTotal = start.hour * 60 + start.minute;
-    final endTotal = startTotal + 30;
-    final end = TimeOfDay(hour: endTotal ~/ 60, minute: endTotal % 60);
-
-    String format(TimeOfDay time) {
-      final int hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-      final minute = time.minute.toString().padLeft(2, '0');
-      final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-      return '$hour12:$minute $period';
-    }
-
-    return '${format(start)} - ${format(end)}';
-  }
-
-  Future<TimeOfDay?> _pickTimeSlot(TimeOfDay initial) async {
+  Future<TimeOfDay?> _pickTimeSlot({
+    required TimeOfDay initial,
+  }) async {
     final slots = _buildAvailableSlots();
+
+    final hasInitial = slots.any(
+      (slot) => slot.hour == initial.hour && slot.minute == initial.minute,
+    );
+    final effectiveInitial = hasInitial ? initial : slots.first;
 
     return showModalBottomSheet<TimeOfDay>(
       context: context,
@@ -206,10 +184,10 @@ class _TurnosScreenState extends State<TurnosScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final slot = slots[index];
-                      final selected =
-                          slot.hour == initial.hour && slot.minute == initial.minute;
+                      final selected = slot.hour == effectiveInitial.hour &&
+                          slot.minute == effectiveInitial.minute;
                       return ListTile(
-                        title: Text(_formatRange(slot)),
+                        title: Text(AppDateFormatter.timeRange12(slot)),
                         trailing: selected
                             ? Icon(
                                 Icons.check_circle,
@@ -233,18 +211,26 @@ class _TurnosScreenState extends State<TurnosScreen> {
     if (!_canEditTurn(turn)) return;
 
     final now = DateTime.now();
-    final initialDate = turn.scheduledAt.isBefore(now) ? now : turn.scheduledAt;
+    final today = DateTime(now.year, now.month, now.day);
+    final scheduledDate = DateTime(
+      turn.scheduledAt.year,
+      turn.scheduledAt.month,
+      turn.scheduledAt.day,
+    );
+    final initialDate = scheduledDate.isBefore(today) ? today : scheduledDate;
 
     final pickedDate = await showDatePicker(
       context: context,
-      firstDate: now,
+      firstDate: today,
       lastDate: DateTime(now.year + 2),
       initialDate: initialDate,
     );
 
     if (!mounted || pickedDate == null) return;
 
-    final pickedTime = await _pickTimeSlot(TimeOfDay.fromDateTime(turn.scheduledAt));
+    final pickedTime = await _pickTimeSlot(
+      initial: TimeOfDay.fromDateTime(turn.scheduledAt),
+    );
     if (!mounted || pickedTime == null) return;
 
     final scheduledAt = DateTime(
@@ -528,8 +514,8 @@ class _TurnosScreenState extends State<TurnosScreen> {
                   turn: turn,
                   statusLabel: _titleCase(turn.status),
                   statusColor: statusColor,
-                  formattedDate: _formatDate(turn.scheduledAt),
-                  formattedTime: _formatTime(turn.scheduledAt),
+                  formattedDate: AppDateFormatter.dateShort(turn.scheduledAt),
+                  formattedTime: AppDateFormatter.time12FromDateTime(turn.scheduledAt),
                   canEdit: _canEditTurn(turn),
                   isUpdating: _updatingTurnId == turn.id,
                   onReprogram: () => _reprogramTurn(turn),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/core/widgets/app_toast.dart';
+import 'package:sigetu/features/auth/data/auth_api.dart';
 import 'package:sigetu/features/auth/presentation/auth_routes.dart';
 
 class PerfilScreen extends StatefulWidget {
@@ -17,12 +19,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
     setState(() => _isLoggingOut = true);
 
+    final refreshToken = AuthSession.refreshToken;
+
+    if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+      try {
+        await AuthApi().logout(refreshToken: refreshToken);
+      } catch (error) {
+        if (mounted) {
+          await AppToast.showError(
+            context,
+            message: error.toString().replaceFirst('Exception: ', ''),
+          );
+        }
+      }
+    }
+
     AuthSession.clear();
 
     if (!mounted) return;
 
-    Navigator.pushNamedAndRemoveUntil(
-      context,
+    Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
       AuthRoutes.login,
       (route) => false,
     );
@@ -47,6 +63,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _isLoggingOut ? null : _logout,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
                 icon: _isLoggingOut
                     ? const SizedBox(
                         width: 16,

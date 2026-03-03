@@ -85,9 +85,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
 
-      AuthSession.accessToken = loginResponse.token;
+      AuthSession.setTokens(
+        access: loginResponse.accessToken,
+        refresh: loginResponse.refreshToken,
+      );
 
-      final role = _extractRoleFromToken(loginResponse.token);
+      final role = _extractRoleFromToken(loginResponse.accessToken);
       final isSecretaryRole =
           role == 'secretaria' || role == 'secretary' || role == 'role_secretaria';
 

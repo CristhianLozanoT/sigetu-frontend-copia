@@ -1,3 +1,5 @@
+import 'package:sigetu/core/utils/backend_datetime.dart';
+
 class StudentTurn {
   StudentTurn({
     required this.id,
@@ -28,12 +30,7 @@ class StudentTurn {
   }
 
   static DateTime _parseDate(dynamic value) {
-    if (value == null) {
-      return DateTime.now();
-    }
-
-    final raw = value.toString();
-    return DateTime.tryParse(raw) ?? DateTime.now();
+    return BackendDateTime.parse(value);
   }
 
   factory StudentTurn.fromJson(Map<String, dynamic> json) {

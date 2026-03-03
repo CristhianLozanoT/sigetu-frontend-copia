@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/utils/app_date_formatter.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/data/appointment_api.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_contexts.dart';
@@ -45,10 +46,6 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
 
   List<String> get _contextosDisponibles =>
       AppointmentContexts.forCategory(widget.categoria);
-
-  bool _isSameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
 
   bool _isDateSelectable(DateTime date) {
     final today = DateTime.now();
@@ -98,69 +95,12 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
 
   bool _isSlotEnabled(TimeOfDay slot) {
     if (_isSubmitting || _fechaSeleccionada == null) return false;
-
-    final selectedDate = _fechaSeleccionada!;
-    final now = DateTime.now();
-
-    if (_isSameDate(selectedDate, now)) {
-      final slotDateTime = DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-        slot.hour,
-        slot.minute,
-      );
-      return slotDateTime.isAfter(now);
-    }
-
     return true;
   }
 
   void _selectSlot(TimeOfDay slot) {
     if (!_isSlotEnabled(slot)) return;
     setState(() => _horaSeleccionada = slot);
-  }
-
-  String _formatSlot(TimeOfDay slot) {
-    final rawHour = slot.hour;
-    final minute = slot.minute.toString().padLeft(2, '0');
-    final period = rawHour >= 12 ? 'PM' : 'AM';
-    final hour12 = (rawHour % 12 == 0 ? 12 : rawHour % 12).toString();
-    return '$hour12:$minute $period';
-  }
-
-  String _formatRange(TimeOfDay start, {int intervalMinutes = 30}) {
-    final startTotalMinutes = start.hour * 60 + start.minute;
-    final endTotalMinutes = startTotalMinutes + intervalMinutes;
-    final endTime = TimeOfDay(
-      hour: (endTotalMinutes ~/ 60) % 24,
-      minute: endTotalMinutes % 60,
-    );
-    return '${_formatSlot(start)} - ${_formatSlot(endTime)}';
-  }
-
-  String _formatearFecha(DateTime? fecha) {
-    if (fecha == null) return 'Seleccionar fecha';
-    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
-  }
-
-  String _formatearFechaLarga(DateTime fecha) {
-    const monthNames = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-
-    return '${fecha.day} de ${monthNames[fecha.month - 1]}, ${fecha.year}';
   }
 
   DateTime _buildScheduledAt(DateTime fecha, TimeOfDay hora) {
@@ -252,8 +192,8 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
       context: context,
       area: widget.categoria,
       attentionType: contextoSeleccionado,
-      formattedDate: _formatearFechaLarga(fechaSeleccionada),
-      formattedTime: _formatSlot(horaSeleccionada),
+      formattedDate: AppDateFormatter.dateLongEs(fechaSeleccionada),
+      formattedTime: AppDateFormatter.time12(horaSeleccionada),
     );
 
     if (!shouldSchedule || !mounted) return;
@@ -408,7 +348,7 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
                     selectedTime: _horaSeleccionada,
                     isSlotEnabled: _isSlotEnabled,
                     onSelectSlot: _selectSlot,
-                    formatSlot: _formatSlot,
+                    formatSlot: AppDateFormatter.time12,
                   ),
                   if (selectedDateMissing || selectedTimeMissing) ...[
                     const SizedBox(height: 10),

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/core/auth/auth_http.dart';
 import 'package:sigetu/core/constants/api_constants.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
 
@@ -46,18 +46,10 @@ class AppointmentApi {
   }
 
   Future<String?> createAppointment(AppointmentRequest request) async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl$endpointPath');
 
-    final response = await http.post(
+    final response = await AuthHttp.post(
       url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${AuthSession.accessToken}',
-      },
       body: jsonEncode(request.toJson()),
     );
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/core/auth/auth_http.dart';
 import 'package:sigetu/core/constants/api_constants.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
 import 'package:sigetu/features/student_dashboard/domain/student_turn.dart';
@@ -14,13 +14,6 @@ class StudentTurnsApi {
 
   final String baseUrl;
   final String endpointPath;
-
-  Map<String, String> _authorizedJsonHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${AuthSession.accessToken}',
-    };
-  }
 
   String _extractErrorMessage(http.Response response) {
     try {
@@ -61,16 +54,9 @@ class StudentTurnsApi {
   }
 
   Future<List<StudentTurn>> _fetchTurnsByPath(String path) async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl$path');
 
-    final response = await http.get(
-      url,
-      headers: _authorizedJsonHeaders(),
-    );
+    final response = await AuthHttp.get(url);
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
@@ -107,15 +93,10 @@ class StudentTurnsApi {
     required int appointmentId,
     required AppointmentRequest request,
   }) async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl/appointments/$appointmentId');
 
-    final response = await http.patch(
+    final response = await AuthHttp.patch(
       url,
-      headers: _authorizedJsonHeaders(),
       body: jsonEncode(request.toJson()),
     );
 
@@ -136,16 +117,9 @@ class StudentTurnsApi {
   }
 
   Future<String?> cancelAppointment({required int appointmentId}) async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl/appointments/$appointmentId/cancel');
 
-    final response = await http.patch(
-      url,
-      headers: _authorizedJsonHeaders(),
-    );
+    final response = await AuthHttp.patch(url);
 
     if (response.statusCode == 200 || response.statusCode == 204) {
       return _extractSuccessMessage(response);

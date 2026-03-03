@@ -1,3 +1,5 @@
+import 'package:sigetu/core/utils/backend_datetime.dart';
+
 class AppointmentRequest {
   AppointmentRequest({
     required this.category,
@@ -12,10 +14,6 @@ class AppointmentRequest {
   Map<String, dynamic> toJson() => {
         'category': category,
         'context': context,
-        'scheduled_at': _formatScheduledAt(scheduledAt),
+        'scheduled_at': BackendDateTime.formatForApi(scheduledAt),
       };
-
-  static String _formatScheduledAt(DateTime value) {
-    return value.toIso8601String().split('.').first;
-  }
 }

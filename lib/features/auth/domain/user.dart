@@ -1,3 +1,5 @@
+import 'package:sigetu/core/utils/backend_datetime.dart';
+
 class User {
   final int id;
   final String email;
@@ -22,6 +24,6 @@ class User {
         academicProgram:
             json['academic_program']?.toString() ?? json['program']?.toString(),
         isActive: json['is_active'],
-        createdAt: DateTime.parse(json['created_at']),
+        createdAt: BackendDateTime.parse(json['created_at']),
       );
 }

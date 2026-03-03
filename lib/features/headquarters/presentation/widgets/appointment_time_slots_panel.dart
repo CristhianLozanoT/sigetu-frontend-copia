@@ -144,7 +144,7 @@ class _AppointmentTimeSlotsPanelState extends State<AppointmentTimeSlotsPanel> {
                 physics: const BouncingScrollPhysics(),
                 controller: _scrollController,
                 itemCount: widget.timeSlots.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final slot = widget.timeSlots[index];
                   final enabled = widget.isSlotEnabled(slot);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
+import 'package:sigetu/core/utils/app_date_formatter.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/secretary/data/secretary_appointments_api.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment_detail.dart';
@@ -120,19 +121,6 @@ class _SecretaryAppointmentDetailScreenState
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime dateTime) {
-    final dd = dateTime.day.toString().padLeft(2, '0');
-    final mm = dateTime.month.toString().padLeft(2, '0');
-    final yyyy = dateTime.year;
-    return '$dd/$mm/$yyyy';
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final hh = dateTime.hour.toString().padLeft(2, '0');
-    final min = dateTime.minute.toString().padLeft(2, '0');
-    return '$hh:$min';
   }
 
   Future<void> _updateStatus(
@@ -322,8 +310,8 @@ class _SecretaryAppointmentDetailScreenState
                     _infoRow(label: 'Categoría', value: _titleCase(detail.category)),
                     _infoRow(label: 'Contexto', value: _titleCase(detail.context)),
                     _infoRow(label: 'Sede', value: _titleCase(detail.sede)),
-                    _infoRow(label: 'Fecha', value: _formatDate(detail.scheduledAt)),
-                    _infoRow(label: 'Hora', value: _formatTime(detail.scheduledAt)),
+                    _infoRow(label: 'Fecha', value: AppDateFormatter.dateShort(detail.scheduledAt)),
+                    _infoRow(label: 'Hora', value: AppDateFormatter.time12FromDateTime(detail.scheduledAt)),
                   ],
                 ),
               ),

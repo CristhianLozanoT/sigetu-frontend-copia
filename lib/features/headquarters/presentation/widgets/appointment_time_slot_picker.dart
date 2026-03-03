@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/utils/app_date_formatter.dart';
 import 'package:sigetu/features/headquarters/presentation/widgets/appointment_picker_button.dart';
 
 class AppointmentTimeSlotPicker extends StatelessWidget {
@@ -25,22 +26,10 @@ class AppointmentTimeSlotPicker extends StatelessWidget {
 
   static String formatRange(TimeOfDay? start, {int intervalMinutes = 30}) {
     if (start == null) return 'Seleccionar horario';
-
-    final startTotalMinutes = start.hour * 60 + start.minute;
-    final endTotalMinutes = startTotalMinutes + intervalMinutes;
-    final end = TimeOfDay(
-      hour: endTotalMinutes ~/ 60,
-      minute: endTotalMinutes % 60,
+    return AppDateFormatter.timeRange12(
+      start,
+      intervalMinutes: intervalMinutes,
     );
-
-    return '${_formatAmPm(start)} - ${_formatAmPm(end)}';
-  }
-
-  static String _formatAmPm(TimeOfDay time) {
-    final int hour12 = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$hour12:$minute $period';
   }
 
   List<TimeOfDay> _buildAvailableSlots() {

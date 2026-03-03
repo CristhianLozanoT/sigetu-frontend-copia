@@ -9,6 +9,11 @@ class ApiConstants {
     defaultValue: '',
   );
 
+  static const int backendTimezoneOffsetMinutes = int.fromEnvironment(
+    'BACKEND_TIMEZONE_OFFSET_MINUTES',
+    defaultValue: -300,
+  );
+
   static String get appointmentsWsUrl {
     if (appointmentsWsUrlOverride.isNotEmpty) {
       return appointmentsWsUrlOverride;

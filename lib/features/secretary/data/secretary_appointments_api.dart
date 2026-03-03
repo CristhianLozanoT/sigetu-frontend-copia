@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/core/auth/auth_http.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
 import 'package:sigetu/core/constants/api_constants.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment.dart';
@@ -12,13 +12,6 @@ class SecretaryAppointmentsApi {
       : baseUrl = baseUrl ?? ApiConstants.baseUrl;
 
   final String baseUrl;
-
-  Map<String, String> _authorizedJsonHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${AuthSession.accessToken}',
-    };
-  }
 
   String _extractErrorMessage(http.Response response) {
     try {
@@ -51,16 +44,9 @@ class SecretaryAppointmentsApi {
   }
 
   Future<List<SecretaryAppointment>> fetchQueueAppointments() async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl/appointments/queue');
 
-    final response = await http.get(
-      url,
-      headers: _authorizedJsonHeaders(),
-    );
+    final response = await AuthHttp.get(url);
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
@@ -98,21 +84,15 @@ class SecretaryAppointmentsApi {
       appointmentId: appointmentId,
       status: AppointmentStatuses.calling,
     );
+    return null;
   }
 
   Future<SecretaryAppointmentDetail> fetchAppointmentDetail({
     required int appointmentId,
   }) async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl/appointments/$appointmentId/detail');
 
-    final response = await http.get(
-      url,
-      headers: _authorizedJsonHeaders(),
-    );
+    final response = await AuthHttp.get(url);
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
@@ -139,15 +119,10 @@ class SecretaryAppointmentsApi {
     required int appointmentId,
     required String status,
   }) async {
-    if (!AuthSession.hasToken) {
-      throw Exception('No autenticado: se requiere token');
-    }
-
     final url = Uri.parse('$baseUrl/appointments/$appointmentId/status');
 
-    final response = await http.patch(
+    final response = await AuthHttp.patch(
       url,
-      headers: _authorizedJsonHeaders(),
       body: jsonEncode({'status': status}),
     );
 

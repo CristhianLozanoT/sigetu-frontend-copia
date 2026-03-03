@@ -1,7 +1,10 @@
+import 'package:sigetu/core/utils/backend_datetime.dart';
+
 class SecretaryAppointment {
   SecretaryAppointment({
     required this.id,
     required this.studentName,
+    required this.secretariaName,
     required this.category,
     required this.context,
     required this.status,
@@ -12,6 +15,7 @@ class SecretaryAppointment {
 
   final int id;
   final String studentName;
+  final String? secretariaName;
   final String category;
   final String context;
   final String status;
@@ -20,12 +24,7 @@ class SecretaryAppointment {
   final DateTime scheduledAt;
 
   static DateTime _parseDate(dynamic value) {
-    if (value == null) {
-      return DateTime.now();
-    }
-
-    final raw = value.toString();
-    return DateTime.tryParse(raw)?.toLocal() ?? DateTime.now();
+    return BackendDateTime.parse(value);
   }
 
   static int _parseInt(dynamic value) {
@@ -41,6 +40,7 @@ class SecretaryAppointment {
     return SecretaryAppointment(
       id: _parseInt(json['id']),
       studentName: (json['student_name'] ?? '').toString(),
+      secretariaName: json['secretaria_name']?.toString(),
       category: (json['category'] ?? '').toString(),
       context: (json['context'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),

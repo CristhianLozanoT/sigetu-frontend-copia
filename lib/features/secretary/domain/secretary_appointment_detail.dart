@@ -1,3 +1,5 @@
+import 'package:sigetu/core/utils/backend_datetime.dart';
+
 class SecretaryAppointmentDetail {
   SecretaryAppointmentDetail({
     required this.id,
@@ -30,12 +32,7 @@ class SecretaryAppointmentDetail {
   }
 
   static DateTime _parseDate(dynamic value) {
-    if (value == null) {
-      return DateTime.now();
-    }
-
-    final raw = value.toString();
-    return DateTime.tryParse(raw)?.toLocal() ?? DateTime.now();
+    return BackendDateTime.parse(value);
   }
 
   factory SecretaryAppointmentDetail.fromJson(Map<String, dynamic> json) {
