@@ -3,7 +3,8 @@ import 'package:sigetu/core/utils/backend_datetime.dart';
 class StudentTurn {
   StudentTurn({
     required this.id,
-    required this.studentId,
+    this.studentId,
+    this.deviceId,
     required this.sede,
     required this.category,
     required this.context,
@@ -14,7 +15,8 @@ class StudentTurn {
   });
 
   final int id;
-  final int studentId;
+  final int? studentId;
+  final String? deviceId;
   final String sede;
   final String category;
   final String context;
@@ -36,7 +38,10 @@ class StudentTurn {
   factory StudentTurn.fromJson(Map<String, dynamic> json) {
     return StudentTurn(
       id: _parseInt(json['id']),
-      studentId: _parseInt(json['student_id']),
+      studentId: json['student_id'] != null
+          ? _parseInt(json['student_id'])
+          : null,
+      deviceId: json['device_id']?.toString(),
       sede: (json['sede'] ?? '').toString(),
       category: (json['category'] ?? '').toString(),
       context: (json['context'] ?? '').toString(),

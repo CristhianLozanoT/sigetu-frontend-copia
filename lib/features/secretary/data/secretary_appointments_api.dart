@@ -9,7 +9,7 @@ import 'package:sigetu/features/secretary/domain/secretary_appointment_detail.da
 
 class SecretaryAppointmentsApi {
   SecretaryAppointmentsApi({String? baseUrl})
-      : baseUrl = baseUrl ?? ApiConstants.baseUrl;
+    : baseUrl = baseUrl ?? ApiConstants.baseUrl;
 
   final String baseUrl;
 
@@ -140,5 +140,40 @@ class SecretaryAppointmentsApi {
     }
 
     throw Exception('Error del servidor: ${response.statusCode}');
+  }
+
+  Future<DateTime> startAttention({required int appointmentId}) async {
+    final url = Uri.parse(
+      '$baseUrl/appointments/$appointmentId/start-attention',
+    );
+    final response = await AuthHttp.post(url, body: '{}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      try {
+        final decoded = jsonDecode(response.body);
+        final raw = decoded['attention_started_at']?.toString();
+        if (raw != null) {
+          final str = raw.replaceFirst(RegExp(r'(Z|[+-]\d{2}:?\d{2})$'), '');
+          final dt = DateTime.tryParse(str);
+          if (dt != null) return dt;
+        }
+      } catch (_) {}
+      return DateTime.now();
+    }
+
+    throw Exception(_extractErrorMessage(response));
+  }
+
+  Future<void> extendTime({required int appointmentId}) async {
+    final url = Uri.parse('$baseUrl/appointments/$appointmentId/extend-time');
+    final response = await AuthHttp.post(url, body: '{}');
+
+    if (response.statusCode == 200 ||
+        response.statusCode == 201 ||
+        response.statusCode == 204) {
+      return;
+    }
+
+    throw Exception(_extractErrorMessage(response));
   }
 }

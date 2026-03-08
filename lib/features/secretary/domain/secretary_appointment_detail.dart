@@ -12,6 +12,7 @@ class SecretaryAppointmentDetail {
     required this.createdAt,
     required this.scheduledAt,
     required this.student,
+    this.attentionStartedAt,
   });
 
   final int id;
@@ -23,6 +24,7 @@ class SecretaryAppointmentDetail {
   final String status;
   final DateTime createdAt;
   final DateTime scheduledAt;
+  final DateTime? attentionStartedAt;
   final SecretaryStudentDetail student;
 
   static int _parseInt(dynamic value) {
@@ -46,6 +48,9 @@ class SecretaryAppointmentDetail {
       status: (json['status'] ?? '').toString(),
       createdAt: _parseDate(json['created_at']),
       scheduledAt: _parseDate(json['scheduled_at']),
+      attentionStartedAt: json['attention_started_at'] != null
+          ? _parseDate(json['attention_started_at'])
+          : null,
       student: SecretaryStudentDetail.fromJson(
         (json['student'] as Map<String, dynamic>? ?? const {}),
       ),

@@ -18,12 +18,14 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'],
-        email: json['email'],
-        fullName: json['full_name'],
-        academicProgram:
-            json['academic_program']?.toString() ?? json['program']?.toString(),
-        isActive: json['is_active'],
-        createdAt: BackendDateTime.parse(json['created_at']),
-      );
+    id: json['id'],
+    email: json['email'],
+    fullName: json['full_name'],
+    academicProgram:
+        json['programa_academico']?.toString() ??
+        json['academic_program']?.toString() ??
+        json['program']?.toString(),
+    isActive: json['is_active'],
+    createdAt: BackendDateTime.parse(json['created_at']),
+  );
 }

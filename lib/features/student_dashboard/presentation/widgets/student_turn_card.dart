@@ -28,9 +28,11 @@ class StudentTurnCard extends StatelessWidget {
   String _titleCase(String value) {
     return value
         .split('_')
-        .map((part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}')
+        .map(
+          (part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1)}',
+        )
         .join(' ');
   }
 
@@ -49,9 +51,7 @@ class StudentTurnCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: scheme.outline.withValues(alpha: 0.14),
-        ),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.14)),
         boxShadow: [
           BoxShadow(
             color: scheme.shadow.withValues(alpha: 0.06),
@@ -71,9 +71,9 @@ class StudentTurnCard extends StatelessWidget {
                   child: RichText(
                     text: TextSpan(
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: titleTone,
-                          ),
+                        fontWeight: FontWeight.w500,
+                        color: titleTone,
+                      ),
                       children: [
                         const TextSpan(text: 'Turno '),
                         TextSpan(
@@ -88,7 +88,10 @@ class StudentTurnCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
@@ -99,9 +102,9 @@ class StudentTurnCard extends StatelessWidget {
                   child: Text(
                     statusLabel,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: statusColor,
-                        fontWeight: FontWeight.w600,
-                        ),
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -112,7 +115,11 @@ class StudentTurnCard extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 1),
-                  child: Icon(Icons.location_on_outlined, color: infoIconColor, size: 19),
+                  child: Icon(
+                    Icons.location_on_outlined,
+                    color: infoIconColor,
+                    size: 19,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -121,16 +128,15 @@ class StudentTurnCard extends StatelessWidget {
                     children: [
                       Text(
                         _titleCase(turn.sede),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         detailText,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: scheme.onSurface.withValues(alpha: 0.86),
-                            ),
+                          color: scheme.onSurface.withValues(alpha: 0.86),
+                        ),
                       ),
                     ],
                   ),
@@ -151,9 +157,8 @@ class StudentTurnCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         formattedDate,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w400,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w400),
                       ),
                     ],
                   ),
@@ -169,9 +174,8 @@ class StudentTurnCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         formattedTime,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w400,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w400),
                       ),
                     ],
                   ),
@@ -236,36 +240,40 @@ class _ActionOutlineButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.2),
-          foregroundColor: color,
-          backgroundColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18),
-              const SizedBox(width: 6),
-            ],
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      child: SizedBox(
+        height: 48,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.2),
+            foregroundColor: color,
+            backgroundColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: 6),
-              trailing!,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (trailing != null) ...[const SizedBox(width: 6), trailing!],
             ],
-          ],
+          ),
         ),
       ),
     );

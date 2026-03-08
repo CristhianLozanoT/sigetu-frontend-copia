@@ -53,6 +53,43 @@ class StudentTurnsApi {
     return _fetchTurnsByPath('/appointments/me/history');
   }
 
+  /// Obtiene las citas de un invitado por device_id.
+  /// Requiere JWT de invitado (role=guest) en AuthSession.
+  Future<List<StudentTurn>> fetchGuestTurns(String deviceId) async {
+    final url = Uri.parse(
+      '$baseUrl/appointments/guest',
+    ).replace(queryParameters: {'device_id': deviceId});
+
+    final response = await AuthHttp.get(url);
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map(StudentTurn.fromJson)
+            .toList();
+      }
+      if (decoded is Map<String, dynamic> && decoded['items'] is List) {
+        return (decoded['items'] as List)
+            .whereType<Map<String, dynamic>>()
+            .map(StudentTurn.fromJson)
+            .toList();
+      }
+      return [];
+    }
+
+    if (response.statusCode == 400 ||
+        response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 404 ||
+        response.statusCode == 422) {
+      throw Exception(_extractErrorMessage(response));
+    }
+
+    throw Exception('Error del servidor: ${response.statusCode}');
+  }
+
   Future<List<StudentTurn>> _fetchTurnsByPath(String path) async {
     final url = Uri.parse('$baseUrl$path');
 

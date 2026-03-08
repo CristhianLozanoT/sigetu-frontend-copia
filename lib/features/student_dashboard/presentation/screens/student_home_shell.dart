@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/utils/responsive.dart';
 import 'student_dashboard_screen.dart';
 import 'turnos_screen.dart';
 import 'perfil_screen.dart';
@@ -51,15 +52,56 @@ class _StudentHomeShellState extends State<StudentHomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = !Responsive.isMobile(context);
+    final isExtended = Responsive.isWeb(context);
+
+    final pages = IndexedStack(
+      index: _currentIndex,
+      children: [
+        _buildNavigator(0, const StudentDashboardScreen()),
+        _buildNavigator(1, const TurnosScreen()),
+        _buildNavigator(2, const PerfilScreen()),
+      ],
+    );
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: _onTap,
+              extended: isExtended,
+              labelType: isExtended
+                  ? NavigationRailLabelType.none
+                  : NavigationRailLabelType.all,
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: Text('Inicio'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  selectedIcon: Icon(Icons.calendar_month_rounded),
+                  label: Text('Mis Turnos'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: Text('Perfil'),
+                ),
+              ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(child: pages),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildNavigator(0, const StudentDashboardScreen()),
-          _buildNavigator(1, const TurnosScreen()),
-          _buildNavigator(2, const PerfilScreen()),
-        ],
-      ),
+      body: pages,
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         onTap: _onTap,

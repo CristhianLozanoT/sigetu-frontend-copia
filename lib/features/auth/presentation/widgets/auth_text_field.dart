@@ -6,6 +6,13 @@ class AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final bool obscureText;
   final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final List<String>? autofillHints;
+  final bool autocorrect;
+  final bool enableSuggestions;
+  final FocusNode? focusNode;
+  final VoidCallback? onEditingComplete;
 
   const AuthTextField({
     super.key,
@@ -14,6 +21,13 @@ class AuthTextField extends StatelessWidget {
     required this.controller,
     this.obscureText = false,
     this.validator,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
+    this.focusNode,
+    this.onEditingComplete,
   });
 
   @override
@@ -22,10 +36,14 @@ class AuthTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-      ),
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
+      autocorrect: autocorrect && !obscureText,
+      enableSuggestions: enableSuggestions && !obscureText,
+      focusNode: focusNode,
+      onEditingComplete: onEditingComplete,
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
     );
   }
 }

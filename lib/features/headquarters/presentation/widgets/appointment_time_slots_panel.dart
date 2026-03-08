@@ -6,6 +6,7 @@ class AppointmentTimeSlotsPanel extends StatefulWidget {
     required this.timeSlots,
     required this.selectedTime,
     required this.isSlotEnabled,
+    required this.isSlotOccupied,
     required this.onSelectSlot,
     required this.formatSlot,
   });
@@ -13,6 +14,7 @@ class AppointmentTimeSlotsPanel extends StatefulWidget {
   final List<TimeOfDay> timeSlots;
   final TimeOfDay? selectedTime;
   final bool Function(TimeOfDay) isSlotEnabled;
+  final bool Function(TimeOfDay) isSlotOccupied;
   final ValueChanged<TimeOfDay> onSelectSlot;
   final String Function(TimeOfDay) formatSlot;
 
@@ -38,7 +40,8 @@ class _AppointmentTimeSlotsPanelState extends State<AppointmentTimeSlotsPanel> {
   void didUpdateWidget(covariant AppointmentTimeSlotsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final selectedChanged = oldWidget.selectedTime?.hour != widget.selectedTime?.hour ||
+    final selectedChanged =
+        oldWidget.selectedTime?.hour != widget.selectedTime?.hour ||
         oldWidget.selectedTime?.minute != widget.selectedTime?.minute;
     final slotsChanged = oldWidget.timeSlots.length != widget.timeSlots.length;
 
@@ -120,8 +123,8 @@ class _AppointmentTimeSlotsPanelState extends State<AppointmentTimeSlotsPanel> {
                   child: Text(
                     'Horarios disponibles',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 Row(
@@ -130,6 +133,13 @@ class _AppointmentTimeSlotsPanelState extends State<AppointmentTimeSlotsPanel> {
                     const SizedBox(width: 6),
                     Text(
                       'Disponible',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(width: 12),
+                    legendDot(scheme.errorContainer),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Ocupado',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -148,25 +158,39 @@ class _AppointmentTimeSlotsPanelState extends State<AppointmentTimeSlotsPanel> {
                 itemBuilder: (context, index) {
                   final slot = widget.timeSlots[index];
                   final enabled = widget.isSlotEnabled(slot);
-                  final isSelected = widget.selectedTime != null &&
+                  final occupied = widget.isSlotOccupied(slot);
+                  final isSelected =
+                      widget.selectedTime != null &&
                       widget.selectedTime!.hour == slot.hour &&
                       widget.selectedTime!.minute == slot.minute;
 
                   final bgColor = isSelected
                       ? scheme.primary
+                      : occupied
+                      ? scheme.error.withValues(alpha: 0.18)
                       : enabled
-                          ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
-                          : scheme.surfaceContainerHighest.withValues(alpha: 0.28);
+                      ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                      : scheme.surfaceContainerHighest.withValues(alpha: 0.28);
 
                   final fgColor = isSelected
                       ? scheme.onPrimary
+                      : occupied
+                      ? scheme.error
                       : enabled
-                          ? scheme.onSurface
-                          : scheme.onSurface.withValues(alpha: 0.35);
+                      ? scheme.onSurface
+                      : scheme.onSurface.withValues(alpha: 0.35);
 
                   final borderColor = isSelected
                       ? scheme.primary
+                      : occupied
+                      ? scheme.error
                       : scheme.outline.withValues(alpha: enabled ? 0.28 : 0.16);
+
+                  final borderWidth = isSelected
+                      ? 1.4
+                      : occupied
+                      ? 2.0
+                      : 1.0;
 
                   return InkWell(
                     onTap: enabled ? () => widget.onSelectSlot(slot) : null,
@@ -180,7 +204,7 @@ class _AppointmentTimeSlotsPanelState extends State<AppointmentTimeSlotsPanel> {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: borderColor,
-                          width: isSelected ? 1.4 : 1,
+                          width: borderWidth,
                         ),
                       ),
                       child: Center(

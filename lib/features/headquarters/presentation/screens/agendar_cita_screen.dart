@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
+import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/core/utils/app_date_formatter.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/data/appointment_api.dart';
@@ -24,7 +27,9 @@ class AgendarCitaScreen extends StatefulWidget {
 class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   final _formKey = GlobalKey<FormState>();
   final _appointmentApi = AppointmentApi();
-  static const int _slotIntervalMinutes = 30;
+  final _realtime = AppointmentsRealtimeService();
+  StreamSubscription<void>? _realtimeSubscription;
+  static const int _slotIntervalMinutes = 15;
   static const int _startMinutes = 8 * 60;
   static const int _endMinutes = 18 * 60;
   static const int _breakStartMinutes = 12 * 60;
@@ -34,6 +39,8 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   TimeOfDay? _horaSeleccionada;
   String? _contextoSeleccionado;
   bool _isSubmitting = false;
+  bool _isLoadingSlots = false;
+  List<TimeOfDay> _horariosOcupados = [];
   int _currentStep = 1;
   late DateTime _displayedMonth;
 
@@ -42,6 +49,19 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     super.initState();
     final now = DateTime.now();
     _displayedMonth = DateTime(now.year, now.month);
+    _realtime.connect();
+    _realtimeSubscription = _realtime.updates.listen((_) {
+      final fecha = _fechaSeleccionada;
+      if (!mounted || fecha == null) return;
+      _fetchOccupiedSlots(fecha);
+    });
+  }
+
+  @override
+  void dispose() {
+    _realtimeSubscription?.cancel();
+    unawaited(_realtime.dispose());
+    super.dispose();
   }
 
   List<String> get _contextosDisponibles =>
@@ -55,7 +75,10 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   }
 
   void _changeMonth(int offset) {
-    final candidate = DateTime(_displayedMonth.year, _displayedMonth.month + offset);
+    final candidate = DateTime(
+      _displayedMonth.year,
+      _displayedMonth.month + offset,
+    );
     final now = DateTime.now();
     final minMonth = DateTime(now.year, now.month);
     final maxMonth = DateTime(now.year + 2, now.month);
@@ -69,17 +92,51 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
 
   void _selectDay(DateTime date) {
     if (!_isDateSelectable(date) || _isSubmitting) return;
-    setState(() => _fechaSeleccionada = date);
+    debugPrint('[AgendarCita] _selectDay: $date');
+    setState(() {
+      _fechaSeleccionada = date;
+      _horaSeleccionada = null;
+      _horariosOcupados = [];
+    });
+    _fetchOccupiedSlots(date);
+  }
+
+  Future<void> _fetchOccupiedSlots(DateTime date) async {
+    setState(() => _isLoadingSlots = true);
+    try {
+      final ocupados = await _appointmentApi.fetchOccupiedSlots(date);
+      if (!mounted) return;
+      setState(() => _horariosOcupados = ocupados);
+    } catch (e, st) {
+      debugPrint('[AgendarCita] fetchOccupiedSlots error: $e');
+      debugPrintStack(stackTrace: st);
+      if (!mounted) return;
+      setState(() => _horariosOcupados = []);
+    } finally {
+      if (mounted) setState(() => _isLoadingSlots = false);
+    }
   }
 
   List<TimeOfDay> _buildTimeSlots() {
     final slots = <TimeOfDay>[];
+    final colombiaNow = DateTime.now().toUtc().subtract(
+      const Duration(hours: 5),
+    );
+    final fecha = _fechaSeleccionada;
+    final isToday =
+        fecha != null &&
+        fecha.year == colombiaNow.year &&
+        fecha.month == colombiaNow.month &&
+        fecha.day == colombiaNow.day;
+    final nowMinutes = colombiaNow.hour * 60 + colombiaNow.minute;
 
     for (
       int minutes = _startMinutes;
       minutes + _slotIntervalMinutes <= _endMinutes;
       minutes += _slotIntervalMinutes
     ) {
+      if (isToday && minutes < nowMinutes) continue;
+
       final slotStart = minutes;
       final slotEnd = minutes + _slotIntervalMinutes;
       final overlapsBreak =
@@ -94,8 +151,12 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   }
 
   bool _isSlotEnabled(TimeOfDay slot) {
-    if (_isSubmitting || _fechaSeleccionada == null) return false;
-    return true;
+    if (_isSubmitting || _fechaSeleccionada == null || _isLoadingSlots)
+      return false;
+    return !_horariosOcupados.any(
+      (occupied) =>
+          occupied.hour == slot.hour && occupied.minute == slot.minute,
+    );
   }
 
   void _selectSlot(TimeOfDay slot) {
@@ -104,13 +165,7 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   }
 
   DateTime _buildScheduledAt(DateTime fecha, TimeOfDay hora) {
-    return DateTime(
-      fecha.year,
-      fecha.month,
-      fecha.day,
-      hora.hour,
-      hora.minute,
-    );
+    return DateTime(fecha.year, fecha.month, fecha.day, hora.hour, hora.minute);
   }
 
   String _normalizeForApi(String value) {
@@ -143,7 +198,8 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
 
-    if (_contextoSeleccionado == null || _contextoSeleccionado!.trim().isEmpty) {
+    if (_contextoSeleccionado == null ||
+        _contextoSeleccionado!.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona un contexto para continuar')),
       );
@@ -169,7 +225,8 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
       return false;
     }
 
-    if (_contextoSeleccionado == null || _contextoSeleccionado!.trim().isEmpty) {
+    if (_contextoSeleccionado == null ||
+        _contextoSeleccionado!.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona un contexto para continuar')),
       );
@@ -258,10 +315,7 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
       debugPrintStack(stackTrace: stackTrace);
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      await AppToast.showError(
-        context,
-        message: message,
-      );
+      await AppToast.showError(context, message: message);
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -276,9 +330,14 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     final isContextStep = _currentStep == 1;
     final isDateTimeStep = _currentStep == 2;
 
+    final hPad = Responsive.horizontalPadding(context);
+    final isWide = !Responsive.isMobile(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(isContextStep ? 'Agendar Cita - Paso 1' : 'Agendar Cita - Paso 2'),
+        title: Text(
+          isContextStep ? 'Agendar Cita - Paso 1' : 'Agendar Cita - Paso 2',
+        ),
         leading: isDateTimeStep
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -287,107 +346,177 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
             : null,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              children: [
-                if (isContextStep) ...[
-                  Text(
-                    'Tipo de atención',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Selecciona el motivo de tu visita.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  AppointmentCategoryContextCard(
-                    selectedContext: _contextoSeleccionado,
-                    contextOptions: _contextosDisponibles,
-                    onContextChanged: (value) =>
-                        setState(() => _contextoSeleccionado = value),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _goToDateTimeStep,
-                      child: const Text('Continuar'),
-                    ),
-                  ),
-                ],
-
-                if (isDateTimeStep) ...[
-                  Text(
-                    'Fecha y horario',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Elige el día y hora de tu turno',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  AppointmentCalendarPanel(
-                    displayedMonth: _displayedMonth,
-                    selectedDate: _fechaSeleccionada,
-                    onMonthChange: _changeMonth,
-                    onDateSelected: _selectDay,
-                    isDateSelectable: _isDateSelectable,
-                  ),
-                  const SizedBox(height: 12),
-                  AppointmentTimeSlotsPanel(
-                    timeSlots: _buildTimeSlots(),
-                    selectedTime: _horaSeleccionada,
-                    isSlotEnabled: _isSlotEnabled,
-                    onSelectSlot: _selectSlot,
-                    formatSlot: AppDateFormatter.time12,
-                  ),
-                  if (selectedDateMissing || selectedTimeMissing) ...[
-                    const SizedBox(height: 10),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 20),
+                children: [
+                  if (isContextStep) ...[
                     Text(
-                      selectedDateMissing
-                          ? 'Selecciona una fecha para habilitar horarios.'
-                          : 'Selecciona un horario para continuar.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      'Tipo de atención',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Selecciona el motivo de tu visita.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 14),
+                    AppointmentCategoryContextCard(
+                      selectedContext: _contextoSeleccionado,
+                      contextOptions: _contextosDisponibles,
+                      onContextChanged: (value) =>
+                          setState(() => _contextoSeleccionado = value),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _goToDateTimeStep,
+                        child: const Text('Continuar'),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _isSubmitting ? null : _goBackToContextStep,
-                          child: const Text('Atrás'),
-                        ),
+
+                  if (isDateTimeStep) ...[
+                    Text(
+                      'Fecha y horario',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Elige el día y hora de tu turno',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 14),
+                    if (isWide)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: AppointmentCalendarPanel(
+                              displayedMonth: _displayedMonth,
+                              selectedDate: _fechaSeleccionada,
+                              onMonthChange: _changeMonth,
+                              onDateSelected: _selectDay,
+                              isDateSelectable: _isDateSelectable,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AppointmentTimeSlotsPanel(
+                                  timeSlots: _buildTimeSlots(),
+                                  selectedTime: _horaSeleccionada,
+                                  isSlotEnabled: _isSlotEnabled,
+                                  isSlotOccupied: (slot) =>
+                                      _horariosOcupados.any(
+                                        (o) =>
+                                            o.hour == slot.hour &&
+                                            o.minute == slot.minute,
+                                      ),
+                                  onSelectSlot: _selectSlot,
+                                  formatSlot: AppDateFormatter.time12,
+                                ),
+                                if (_isLoadingSlots) ...[
+                                  const SizedBox(height: 10),
+                                  const LinearProgressIndicator(),
+                                ],
+                                if (!_isLoadingSlots &&
+                                    (selectedDateMissing ||
+                                        selectedTimeMissing)) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    selectedDateMissing
+                                        ? 'Selecciona una fecha para habilitar horarios.'
+                                        : 'Selecciona un horario para continuar.',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    else ...[
+                      AppointmentCalendarPanel(
+                        displayedMonth: _displayedMonth,
+                        selectedDate: _fechaSeleccionada,
+                        onMonthChange: _changeMonth,
+                        onDateSelected: _selectDay,
+                        isDateSelectable: _isDateSelectable,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: SizedBox(
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: _isSubmitting ? null : _confirmarYAgendar,
-                            child: _isSubmitting
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Text('Revisar'),
+                      const SizedBox(height: 12),
+                      AppointmentTimeSlotsPanel(
+                        timeSlots: _buildTimeSlots(),
+                        selectedTime: _horaSeleccionada,
+                        isSlotEnabled: _isSlotEnabled,
+                        isSlotOccupied: (slot) => _horariosOcupados.any(
+                          (o) => o.hour == slot.hour && o.minute == slot.minute,
+                        ),
+                        onSelectSlot: _selectSlot,
+                        formatSlot: AppDateFormatter.time12,
+                      ),
+                      if (_isLoadingSlots) ...[
+                        const SizedBox(height: 10),
+                        const LinearProgressIndicator(),
+                      ],
+                      if (!_isLoadingSlots &&
+                          (selectedDateMissing || selectedTimeMissing)) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          selectedDateMissing
+                              ? 'Selecciona una fecha para habilitar horarios.'
+                              : 'Selecciona un horario para continuar.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isSubmitting
+                                ? null
+                                : _goBackToContextStep,
+                            child: const Text('Atrás'),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _isSubmitting
+                                  ? null
+                                  : _confirmarYAgendar,
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Revisar'),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

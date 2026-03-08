@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sigetu/core/auth/auth_session.dart';
 import 'package:sigetu/core/constants/appointment_statuses.dart';
 import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
 import 'package:sigetu/core/utils/app_date_formatter.dart';
+import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
 import 'package:sigetu/features/student_dashboard/data/student_turns_api.dart';
@@ -61,9 +63,15 @@ class _TurnosScreenState extends State<TurnosScreen> {
     }
 
     try {
-      final turns = _showHistory
-          ? await _api.fetchMyTurnsHistory()
-          : await _api.fetchMyTurns();
+      final List<StudentTurn> turns;
+      if (AuthSession.isGuest && AuthSession.deviceId != null) {
+        // Invitado: obtener citas por device_id (historial no aplica)
+        turns = await _api.fetchGuestTurns(AuthSession.deviceId!);
+      } else {
+        turns = _showHistory
+            ? await _api.fetchMyTurnsHistory()
+            : await _api.fetchMyTurns();
+      }
 
       _handleCallingSound(turns);
 
@@ -76,7 +84,9 @@ class _TurnosScreenState extends State<TurnosScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+      setState(
+        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       _isFetching = false;
       if (mounted) {
@@ -94,7 +104,8 @@ class _TurnosScreenState extends State<TurnosScreen> {
 
     final callingIds = turns
         .where(
-          (turn) => turn.status.trim().toLowerCase() == AppointmentStatuses.calling,
+          (turn) =>
+              turn.status.trim().toLowerCase() == AppointmentStatuses.calling,
         )
         .map((turn) => turn.id)
         .toSet();
@@ -112,9 +123,11 @@ class _TurnosScreenState extends State<TurnosScreen> {
   String _titleCase(String value) {
     return value
         .split('_')
-        .map((part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}')
+        .map(
+          (part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1)}',
+        )
         .join(' ');
   }
 
@@ -149,9 +162,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
     return slots;
   }
 
-  Future<TimeOfDay?> _pickTimeSlot({
-    required TimeOfDay initial,
-  }) async {
+  Future<TimeOfDay?> _pickTimeSlot({required TimeOfDay initial}) async {
     final slots = _buildAvailableSlots();
 
     final hasInitial = slots.any(
@@ -173,8 +184,8 @@ class _TurnosScreenState extends State<TurnosScreen> {
                 Text(
                   'Seleccionar horario',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -184,7 +195,8 @@ class _TurnosScreenState extends State<TurnosScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final slot = slots[index];
-                      final selected = slot.hour == effectiveInitial.hour &&
+                      final selected =
+                          slot.hour == effectiveInitial.hour &&
                           slot.minute == effectiveInitial.minute;
                       return ListTile(
                         title: Text(AppDateFormatter.timeRange12(slot)),
@@ -263,10 +275,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
     } catch (error) {
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      await AppToast.showError(
-        context,
-        message: message,
-      );
+      await AppToast.showError(context, message: message);
     } finally {
       if (mounted) {
         setState(() => _updatingTurnId = null);
@@ -302,7 +311,9 @@ class _TurnosScreenState extends State<TurnosScreen> {
     setState(() => _updatingTurnId = turn.id);
 
     try {
-      final successMessage = await _api.cancelAppointment(appointmentId: turn.id);
+      final successMessage = await _api.cancelAppointment(
+        appointmentId: turn.id,
+      );
       if (!mounted) return;
       await AppToast.showSuccess(
         context,
@@ -312,10 +323,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
     } catch (error) {
       if (!mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      await AppToast.showError(
-        context,
-        message: message,
-      );
+      await AppToast.showError(context, message: message);
     } finally {
       if (mounted) {
         setState(() => _updatingTurnId = null);
@@ -364,10 +372,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  scheme.primary,
-                  scheme.secondary,
-                ],
+                colors: [scheme.primary, scheme.secondary],
               ),
               borderRadius: BorderRadius.circular(999),
             ),
@@ -398,9 +403,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
                           child: Center(
                             child: Text(
                               'Actuales',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
+                              style: Theme.of(context).textTheme.labelLarge
                                   ?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: isHistory
@@ -421,9 +424,7 @@ class _TurnosScreenState extends State<TurnosScreen> {
                           child: Center(
                             child: Text(
                               'Historial',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
+                              style: Theme.of(context).textTheme.labelLarge
                                   ?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: isHistory
@@ -467,11 +468,16 @@ class _TurnosScreenState extends State<TurnosScreen> {
 
             if (_errorMessage != null) {
               return ListView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.horizontalPadding(context),
+                  vertical: 20,
+                ),
                 children: [
                   Text(
                     _errorMessage!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
@@ -484,9 +490,12 @@ class _TurnosScreenState extends State<TurnosScreen> {
 
             if (_turns.isEmpty) {
               return ListView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.horizontalPadding(context),
+                  vertical: 20,
+                ),
                 children: [
-                  SizedBox(height: 80),
+                  const SizedBox(height: 80),
                   Center(
                     child: Text(
                       _showHistory
@@ -502,7 +511,10 @@ class _TurnosScreenState extends State<TurnosScreen> {
               );
             }
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.horizontalPadding(context),
+                vertical: 16,
+              ),
               itemCount: _turns.length,
               itemBuilder: (context, index) {
                 final turn = _turns[index];
@@ -510,16 +522,25 @@ class _TurnosScreenState extends State<TurnosScreen> {
                   turn.status,
                   Theme.of(context).colorScheme,
                 );
-                return StudentTurnCard(
-                  turn: turn,
-                  statusLabel: _titleCase(turn.status),
-                  statusColor: statusColor,
-                  formattedDate: AppDateFormatter.dateShort(turn.scheduledAt),
-                  formattedTime: AppDateFormatter.time12FromDateTime(turn.scheduledAt),
-                  canEdit: _canEditTurn(turn),
-                  isUpdating: _updatingTurnId == turn.id,
-                  onReprogram: () => _reprogramTurn(turn),
-                  onCancel: () => _cancelTurn(turn),
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: StudentTurnCard(
+                      turn: turn,
+                      statusLabel: _titleCase(turn.status),
+                      statusColor: statusColor,
+                      formattedDate: AppDateFormatter.dateShort(
+                        turn.scheduledAt,
+                      ),
+                      formattedTime: AppDateFormatter.time12FromDateTime(
+                        turn.scheduledAt,
+                      ),
+                      canEdit: _canEditTurn(turn),
+                      isUpdating: _updatingTurnId == turn.id,
+                      onReprogram: () => _reprogramTurn(turn),
+                      onCancel: () => _cancelTurn(turn),
+                    ),
+                  ),
                 );
               },
             );
