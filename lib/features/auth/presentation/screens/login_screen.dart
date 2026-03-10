@@ -4,6 +4,8 @@ import 'package:sigetu/core/auth/auth_session.dart';
 import 'package:sigetu/core/utils/device_id.dart';
 import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
+import 'package:sigetu/features/administrative/presentation/administrative_routes.dart';
+import 'package:sigetu/features/admisiones_mercadeo/presentation/admisiones_mercadeo_routes.dart';
 import 'package:sigetu/features/auth/data/auth_api.dart';
 import 'package:sigetu/features/auth/presentation/auth_routes.dart';
 import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
@@ -122,6 +124,15 @@ class _LoginScreenState extends State<LoginScreen>
           role == 'secretaria' ||
           role == 'secretary' ||
           role == 'role_secretaria';
+        final isAdministrativeRole =
+          role == 'administrativo' ||
+          role == 'administrativa' ||
+          role == 'admin' ||
+          role == 'role_administrativo';
+          final isAdmissionsMarketingRole =
+            role == 'admisiones_mercadeo' ||
+            role == 'admisionesmercadeo' ||
+            role == 'role_admisiones_mercadeo';
 
       await _showRequestMessage(
         loginResponse.message ?? 'Inicio de sesión exitoso',
@@ -131,6 +142,10 @@ class _LoginScreenState extends State<LoginScreen>
         context,
         isSecretaryRole
             ? SecretaryRoutes.home
+            : isAdministrativeRole
+            ? AdministrativeRoutes.home
+          : isAdmissionsMarketingRole
+          ? AdmisionesMercadeoRoutes.home
             : StudentDashboardRoutes.dashboard,
       );
     } catch (error) {

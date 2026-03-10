@@ -104,7 +104,10 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
   Future<void> _fetchOccupiedSlots(DateTime date) async {
     setState(() => _isLoadingSlots = true);
     try {
-      final ocupados = await _appointmentApi.fetchOccupiedSlots(date);
+      final ocupados = await _appointmentApi.fetchOccupiedSlots(
+        date,
+        sede: AppointmentContexts.headquarterForCategory(widget.categoria),
+      );
       if (!mounted) return;
       setState(() => _horariosOcupados = ocupados);
     } catch (e, st) {
@@ -168,30 +171,6 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     return DateTime(fecha.year, fecha.month, fecha.day, hora.hour, hora.minute);
   }
 
-  String _normalizeForApi(String value) {
-    const replacements = {
-      'á': 'a',
-      'é': 'e',
-      'í': 'i',
-      'ó': 'o',
-      'ú': 'u',
-      'Á': 'A',
-      'É': 'E',
-      'Í': 'I',
-      'Ó': 'O',
-      'Ú': 'U',
-      'ñ': 'n',
-      'Ñ': 'N',
-    };
-
-    var normalized = value;
-    replacements.forEach((key, replacement) {
-      normalized = normalized.replaceAll(key, replacement);
-    });
-
-    return normalized.trim().toLowerCase();
-  }
-
   void _goToDateTimeStep() {
     if (_isSubmitting) return;
 
@@ -247,6 +226,7 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
 
     final shouldSchedule = await AppointmentConfirmationDialog.show(
       context: context,
+      headquarter: AppointmentContexts.headquarterForCategory(widget.categoria),
       area: widget.categoria,
       attentionType: contextoSeleccionado,
       formattedDate: AppDateFormatter.dateLongEs(fechaSeleccionada),
@@ -284,8 +264,8 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     }
 
     final request = AppointmentRequest(
-      category: _normalizeForApi(widget.categoria),
-      context: _normalizeForApi(contextoSeleccionado),
+      category: AppointmentContexts.toApiCategory(widget.categoria),
+      context: AppointmentContexts.toApiContext(contextoSeleccionado),
       scheduledAt: _buildScheduledAt(fechaSeleccionada, horaSeleccionada),
     );
 
@@ -295,7 +275,10 @@ class _AgendarCitaScreenState extends State<AgendarCitaScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final successMessage = await _appointmentApi.createAppointment(request);
+      final successMessage = await _appointmentApi.createAppointment(
+        request,
+        sede: AppointmentContexts.headquarterForCategory(widget.categoria),
+      );
 
       if (!mounted) return;
 

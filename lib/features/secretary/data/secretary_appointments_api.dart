@@ -8,10 +8,11 @@ import 'package:sigetu/features/secretary/domain/secretary_appointment.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment_detail.dart';
 
 class SecretaryAppointmentsApi {
-  SecretaryAppointmentsApi({String? baseUrl})
+  SecretaryAppointmentsApi({String? baseUrl, this.sede})
     : baseUrl = baseUrl ?? ApiConstants.baseUrl;
 
   final String baseUrl;
+  final String? sede;
 
   String _extractErrorMessage(http.Response response) {
     try {
@@ -44,7 +45,15 @@ class SecretaryAppointmentsApi {
   }
 
   Future<List<SecretaryAppointment>> fetchQueueAppointments() async {
-    final url = Uri.parse('$baseUrl/appointments/queue');
+    final baseUri = Uri.parse('$baseUrl/appointments/queue');
+    final trimmedSede = sede?.trim();
+    final queryParameters = {
+      ...baseUri.queryParameters,
+      if (trimmedSede != null && trimmedSede.isNotEmpty) 'sede': trimmedSede,
+    };
+    final url = baseUri.replace(
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
 
     final response = await AuthHttp.get(url);
 

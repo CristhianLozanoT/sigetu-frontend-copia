@@ -11,14 +11,21 @@ import 'package:sigetu/features/secretary/domain/secretary_appointment.dart';
 import 'package:sigetu/features/secretary/presentation/screens/secretary_appointment_detail_screen.dart';
 
 class SecretaryScreen extends StatefulWidget {
-  const SecretaryScreen({super.key});
+  const SecretaryScreen({
+    super.key,
+    this.sede,
+    this.appBarTitle = 'Secretaría - Citas',
+  });
+
+  final String? sede;
+  final String appBarTitle;
 
   @override
   State<SecretaryScreen> createState() => _SecretaryScreenState();
 }
 
 class _SecretaryScreenState extends State<SecretaryScreen> {
-  final _api = SecretaryAppointmentsApi();
+  late final SecretaryAppointmentsApi _api;
   final _realtime = AppointmentsRealtimeService();
 
   bool _isLoading = true;
@@ -31,6 +38,7 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
   @override
   void initState() {
     super.initState();
+    _api = SecretaryAppointmentsApi(sede: widget.sede);
     _loadAppointments();
     _realtime.connect();
     _realtimeSubscription = _realtime.updates.listen((_) {
@@ -201,7 +209,7 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Secretaría - Citas')),
+      appBar: AppBar(title: Text(widget.appBarTitle)),
       body: RefreshIndicator(
         onRefresh: _loadAppointments,
         child: Builder(

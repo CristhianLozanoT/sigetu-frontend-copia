@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sigetu/core/auth/auth_session.dart';
+import 'package:sigetu/features/administrative/presentation/administrative_routes.dart';
+import 'package:sigetu/features/admisiones_mercadeo/presentation/admisiones_mercadeo_routes.dart';
 import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 import 'core/theme/app_theme.dart';
@@ -94,6 +96,8 @@ class _MyAppState extends State<MyApp> {
 
       routes: {
         ...AuthRoutes.routes,
+        ...AdministrativeRoutes.routes,
+        ...AdmisionesMercadeoRoutes.routes,
         ...SecretaryRoutes.routes,
         ...StudentDashboardRoutes.routes,
       },

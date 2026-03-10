@@ -44,8 +44,16 @@ class AppointmentApi {
     return null;
   }
 
-  Future<String?> createAppointment(AppointmentRequest request) async {
-    final url = Uri.parse('$baseUrl$endpointPath');
+  Future<String?> createAppointment(AppointmentRequest request, {String? sede}) async {
+    final baseUri = Uri.parse('$baseUrl$endpointPath');
+    final trimmedSede = sede?.trim();
+    final queryParameters = {
+      ...baseUri.queryParameters,
+      if (trimmedSede != null && trimmedSede.isNotEmpty) 'sede': trimmedSede,
+    };
+    final url = baseUri.replace(
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
 
     final response = await AuthHttp.post(
       url,
@@ -68,8 +76,16 @@ class AppointmentApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<List<TimeOfDay>> fetchOccupiedSlots(DateTime date) async {
-    final url = Uri.parse('$baseUrl$endpointPath/horarios-ocupados');
+  Future<List<TimeOfDay>> fetchOccupiedSlots(DateTime date, {String? sede}) async {
+    final baseUri = Uri.parse('$baseUrl$endpointPath/horarios-ocupados');
+    final trimmedSede = sede?.trim();
+    final queryParameters = {
+      ...baseUri.queryParameters,
+      if (trimmedSede != null && trimmedSede.isNotEmpty) 'sede': trimmedSede,
+    };
+    final url = baseUri.replace(
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
 
     final response = await AuthHttp.get(url);
 

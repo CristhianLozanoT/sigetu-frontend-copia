@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:sigetu/core/auth/auth_session.dart';
 import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/core/widgets/section_header.dart';
+import 'package:sigetu/features/headquarters/presentation/screens/admisiones_mercadeo_screen.dart';
 import 'package:sigetu/features/headquarters/presentation/screens/asistencia_estudiantil_screen.dart';
+import 'package:sigetu/features/headquarters/presentation/screens/sede_administrativa_screen.dart';
 import 'package:sigetu/features/student_dashboard/presentation/widgets/dashboard_card.dart';
 
 class SeleccionarSedeScreen extends StatelessWidget {
@@ -40,7 +42,14 @@ class SeleccionarSedeScreen extends StatelessWidget {
             subtitle: 'Trámites y documentación',
             imagePath: 'assets/images/asistencia_estudiantil.png',
             icon: Icons.apartment_outlined,
-            onTap: () => _irASiguiente(context, 'Sede Administrativa'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SedeAdministrativaScreen(),
+                ),
+              );
+            },
           );
 
     Widget cardAdmisiones = isGuest
@@ -54,7 +63,14 @@ class SeleccionarSedeScreen extends StatelessWidget {
             subtitle: 'Procesos de inscripción y matrícula',
             imagePath: 'assets/images/asistencia_estudiantil.png',
             icon: Icons.how_to_reg_outlined,
-            onTap: () => _irASiguiente(context, 'Admisiones'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdmisionesMercadeoScreen(),
+                ),
+              );
+            },
           );
 
     return Scaffold(
@@ -94,22 +110,6 @@ class SeleccionarSedeScreen extends StatelessWidget {
     );
   }
 
-  void _irASiguiente(BuildContext context, String sede) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(sede)),
-          body: Center(
-            child: Text(
-              'Pantalla de $sede',
-              style: const TextStyle(fontSize: 20),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Tarjeta bloqueada para modo invitado
