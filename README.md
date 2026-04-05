@@ -48,8 +48,8 @@ Todo está documentado en `/docs`. Selecciona según tu rol:
 - ✅ **Flutter 3.11.0+** ([Instalar](https://flutter.dev/docs/get-started/install))
 - ✅ **Dart 3.11.0+** (incluido con Flutter)
 - ✅ **Android Studio / VS Code** con extensión Flutter
-- ✅ **Emulador Android** o **dispositivo físico** conectado
-- ✅ **Backend REST API** ejecutándose (e.g., `http://192.168.x.x:8000`)
+- ✅ **Emulador / Dispositivo / Navegador** (Android, iOS, Web soportados)
+- ✅ **Backend REST API** ejecutándose (producción: `https://sigetu-backend.onrender.com`)
 
 ---
 
@@ -67,11 +67,12 @@ Todo está documentado en `/docs`. Selecciona según tu rol:
 
 ## 🎯 Características Principales
 
-✅ **Autenticación** — Login y gestión de sesiones  
-✅ **Citas en Tiempo Real** — WebSocket para sincronización instantánea  
-✅ **Multi-Rol** — Estudiante, Secretaria, Administrador  
+✅ **Autenticación** — Login, registro y modo invitado (guest)  
+✅ **Citas en Tiempo Real** — WebSocket con reconexión automática  
+✅ **Notificaciones Push** — Firebase Cloud Messaging integrado  
+✅ **Multi-Rol** — Estudiante, Secretaria, Administrativo, Admisiones  
 ✅ **Responsive** — Adaptable a diferentes pantallas  
-✅ **Multiplataforma** — Android, iOS (Web futuro)  
+✅ **Multiplataforma** — Android, iOS, Web, Windows, macOS
 
 ---
 
@@ -90,10 +91,13 @@ sigetu-frontend/
 │   │   └── widgets/               ← Componentes globales
 │   │
 │   └── features/                  ← Features específicas
-│       ├── auth/                  ← Autenticación
+│       ├── auth/                  ← Autenticación (login, registro, guest)
 │       ├── student_dashboard/     ← Dashboard estudiante
 │       ├── secretary/             ← Panel secretaria
-│       └── headquarters/          ← Panel administrativo
+│       ├── administrative/        ← Panel administrativo
+│       ├── admisiones_mercadeo/   ← Admisiones y mercadeo
+│       ├── headquarters/          ← Selección de sede
+│       └── shared/                ← Componentes compartidos
 │
 ├── test/                          ← Tests unitarios
 ├── docs/                          ← Documentación completa
@@ -110,7 +114,7 @@ sigetu-frontend/
 └── README.md                      ← Este archivo
 ```
 
-Voir [docs/STRUCTURE.md](docs/STRUCTURE.md) pour une explication détaillée.
+Ver [docs/STRUCTURE.md](docs/STRUCTURE.md) para una explicación detallada.
 
 ---
 
@@ -145,20 +149,24 @@ flutter --help
 
 ## 🔌 Configuración de API
 
-La app se configura mediante `--dart-define`:
+La app usa backend en producción por defecto. Para desarrollo local:
 
 ```bash
-# Backend local (emulador)
+# Backend local (emulador Android)
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
-# Backend remoto (dispositivo físico)
-flutter run \
-  --dart-define=API_BASE_URL=http://192.168.101.70:8000 \
-  --dart-define=APPOINTMENTS_WS_URL=ws://192.168.101.70:8000/appointments/ws
+# Backend local (dispositivo físico en misma red)
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000
+
+# Backend de producción (default)
+flutter run
+# Usa: https://sigetu-backend.onrender.com
 ```
 
-- **API_BASE_URL** - Base de la API REST
-- **APPOINTMENTS_WS_URL** - URL del WebSocket (opcional, se construye automáticamente)
+**Variables disponibles:**
+- **API_BASE_URL** - Base de la API REST (default: `https://sigetu-backend.onrender.com`)
+- **APPOINTMENTS_WS_URL** - URL del WebSocket (opcional, se construye automáticamente desde API_BASE_URL)
+- **BACKEND_TIMEZONE_OFFSET_MINUTES** - Offset de zona horaria (default: -300 para UTC-5)
 
 Más detalles en [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
@@ -212,21 +220,4 @@ Este proyecto es privado de la institución.
 
 ---
 
-**Última actualización:** Marzo 2026
-- Revisa firewall/puerto `8000`
-
-### 3) WebSocket no conecta
-
-- Verifica `APPOINTMENTS_WS_URL`
-- Si backend es HTTPS, usa `wss://`
-
-### 4) Dependencias corruptas o caché rara
-
-```bash
-flutter clean
-flutter pub get
-```
-
----
-
-Si necesitas, puedo agregar una sección con comandos específicos para Windows PowerShell (copiar/pegar directo) y para macOS/Linux.
+**Última actualización:** Abril 2026

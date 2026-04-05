@@ -179,6 +179,9 @@ class MyFeatureRoutes {
 - Reutiliza componentes de `core/widgets/`
 - Sigue convenciones de commits en [CONTRIBUTING.md](CONTRIBUTING.md)
 - Valida errores del backend y muéstralos al usuario
+- **Usa `AuthSession` para gestión de tokens y sesiones**
+- **Sincroniza FCM token con backend** al iniciar sesión
+- **Maneja modo guest** con device_id cuando aplique
 
 ### ❌ No
 - Hardcodees URLs, usa `ApiConstants`
@@ -186,6 +189,7 @@ class MyFeatureRoutes {
 - Cambies nombres de campos del backend sin requerimiento
 - Agregues colores fuera del tema de `core/theme/`
 - Uses `toLocal()` directamente para fechas de negocio
+- **Olvides probar en Web** además de Android/iOS
 
 ---
 
@@ -241,19 +245,25 @@ Más comandos en [COMMANDS.md](COMMANDS.md).
 ## 8️⃣ Preguntas Frecuentes
 
 **P: ¿Cómo manejo autenticación?**
-A: Usa `AuthSession` en `core/auth/auth_session.dart`. Guarda tokens y controla sesiones.
+A: Usa `AuthSession` en `core/auth/auth_session.dart`. Guarda tokens (access + refresh), soporta modo guest, y restaura sesión automáticamente.
 
 **P: ¿Cómo consumo la API REST?**
-A: Usa `http` package. Crea un `RemoteDataSource` en `data/datasources/remote/`.
+A: Usa `AuthHttp` de `core/auth/auth_http.dart`. Maneja auto-refresh de tokens y diferencia Web vs Android.
 
 **P: ¿Cómo actualizo en tiempo real?**
-A: Usa WebSocket via `core/realtime/`. `ApiConstants.appointmentsWsUrl` proporciona la URL.
+A: Usa `AppointmentsRealtimeService` de `core/realtime/`. WebSocket se conecta automáticamente y reconecta cada 3s si falla.
 
 **P: ¿Cómo muestro notificaciones?**
-A: Usa `AppToast` de `core/widgets/app_toast.dart`.
+A: Para toasts usa `AppToast`. Para push usa `NotificationService` (Firebase ya configurado).
+
+**P: ¿Cómo sincronizo el FCM token?**
+A: Llama `FCMTokenSync.sync()` después del login. Registra el token en backend automáticamente.
 
 **P: ¿Dónde agrego temas?**
 A: En `core/theme/app_theme.dart`. No hardcodees colores en widgets.
+
+**P: ¿Cómo manejo modo invitado (guest)?**
+A: Usa `AuthSession.isGuest` y `AuthSession.deviceId`. El backend tiene endpoints separados para guest.
 
 ---
 
@@ -267,3 +277,7 @@ A: En `core/theme/app_theme.dart`. No hardcodees colores en widgets.
 ---
 
 **¿Listo para codificar? ¡Adelante! Cualquier duda, consulta la documentación en `/docs`.** 🎉
+
+---
+
+**Última actualización:** Abril 2026

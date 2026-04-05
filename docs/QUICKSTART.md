@@ -143,12 +143,105 @@ flutter run -d "emulator"
 
 ### Opción C: Con Variables de Entorno (API específica)
 
-Si necesitas conectar a un backend diferente:
+**Backend de producción (default):**
+```bash
+flutter run
+# Usa: https://sigetu-backend.onrender.com
+```
 
+**Backend local (emulador Android):**
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+```
+
+**Backend local (dispositivo físico en misma red):**
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000
+```
+
+**Backend personalizado:**
 ```bash
 flutter run \
-  --dart-define=API_BASE_URL=http://192.168.101.70:8000 \
-  --dart-define=APPOINTMENTS_WS_URL=ws://192.168.101.70:8000/appointments/ws
+  --dart-define=API_BASE_URL=https://mi-backend.com \
+  --dart-define=BACKEND_TIMEZONE_OFFSET_MINUTES=-300
+```
+
+---
+
+## 🔔 Configuración de Firebase (Notificaciones Push)
+
+### Firebase Ya Configurado ✅
+
+El proyecto ya tiene Firebase configurado para todas las plataformas:
+
+```yaml
+# En pubspec.yaml
+firebase_core: ^3.0.0
+firebase_messaging: ^15.0.0
+flutter_local_notifications: ^17.2.4
+```
+
+**Proyecto Firebase:** `sigetu-b10c0`
+
+| Plataforma | Estado | App ID |
+|-----------|--------|--------|
+| Android | ✅ | `1:882177455207:android:600e3c219b1640ee6e90c2` |
+| iOS | ✅ | `1:882177455207:ios:fc2cfb26a3e112eb6e90c2` |
+| Web | ✅ | `1:882177455207:web:3b807841f710f4c26e90c2` |
+| Windows | ✅ | `1:882177455207:web:75655aaa38d50eaa6e90c2` |
+| macOS | ✅ | `1:882177455207:ios:fc2cfb26a3e112eb6e90c2` |
+
+### Archivos de Configuración
+
+Ya existen en el proyecto (no necesitas crearlos):
+
+```
+android/app/google-services.json          ✅ Configurado
+ios/Runner/GoogleService-Info.plist       ✅ Configurado
+lib/firebase_options.dart                  ✅ Configurado
+```
+
+### Inicialización Automática
+
+Firebase se inicializa automáticamente en `main.dart`:
+
+```dart
+await Firebase.initializeApp(
+  options: DefaultFirebaseOptions.currentPlatform
+);
+FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+```
+
+### Funcionamiento
+
+1. **Al hacer login:** Se sincroniza el FCM token con el backend automáticamente
+2. **Backend envía notificación:** Llega a través de Firebase Cloud Messaging
+3. **App muestra notificación:** En Android usa canal 'citas' de alta prioridad
+4. **En foreground:** Se muestra notificación local
+
+### Troubleshooting Firebase
+
+**Si no recibes notificaciones:**
+
+```bash
+# 1. Verificar que Firebase está inicializado
+flutter run
+# Busca en logs: "Firebase initialized"
+
+# 2. Verificar permisos (iOS)
+# Settings > SIGETU > Notifications > Allow Notifications
+
+# 3. Ver token FCM en logs
+# Aparece al iniciar la app
+```
+
+**Si hay error de configuración:**
+
+```bash
+# Limpiar y reconstruir
+flutter clean
+flutter pub get
+flutter run
 ```
 
 ---
@@ -246,11 +339,14 @@ adb kill-server && adb start-server        # Reiniciar ADB
 **Solución:**
 ```bash
 # Verifica que el backend esté corriendo
-curl http://192.168.101.70:8000/appointments
+curl https://sigetu-backend.onrender.com/appointments/me/current
 
-# Si usas emulador y backend local:
+# Si usas backend local:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 # (10.0.2.2 es alias de localhost en emulador Android)
+
+# Si usas dispositivo físico y backend local:
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000
 ```
 
 ### Problema: "Gradle build failed"
@@ -306,3 +402,7 @@ Este comando verifica:
 ---
 
 **¡Listo! Ahora ejecuta `flutter run` y comienza a desarrollar.** 🚀
+
+---
+
+**Última actualización:** Abril 2026

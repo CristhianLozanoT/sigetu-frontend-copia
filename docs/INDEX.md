@@ -57,4 +57,4 @@ Bienvenido a la documentación técnica de **SIGETU**, una aplicación Flutter p
 
 ---
 
-**Última actualización:** Marzo 2026
+**Última actualización:** Abril 2026

@@ -480,6 +480,10 @@ git branch -d feature/xxx
 
 ### Escribir Tests
 
+⚠️ **Nota:** Actualmente el proyecto solo tiene un test placeholder. Los tests están pendientes de implementar.
+
+**Ejemplo de estructura recomendada:**
+
 ```dart
 // test/features/auth/domain/usecases/login_usecase_test.dart
 
@@ -591,4 +595,4 @@ git checkout feature/my-feature
 
 **¡Gracias por contribuir a SIGETU!** 🙏
 
-**Última actualización:** Marzo 2026
+**Última actualización:** Abril 2026

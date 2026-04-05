@@ -62,16 +62,20 @@ flutter run -d "meu-iphone"
 ### Ejecutar con Variables de Entorno
 
 ```bash
-# Backend local (emulador)
+# Backend de producción (default)
+flutter run
+# Usa https://sigetu-backend.onrender.com
+
+# Backend local (emulador Android)
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
-# Backend remoto (dispositivo físico)
+# Backend local (dispositivo físico en red local)
 flutter run \
-  --dart-define=API_BASE_URL=http://192.168.101.70:8000 \
-  --dart-define=APPOINTMENTS_WS_URL=ws://192.168.101.70:8000/appointments/ws
+  --dart-define=API_BASE_URL=http://192.168.x.x:8000
 
 # Zona horaria personalizada
 flutter run \
+  --dart-define=API_BASE_URL=https://mi-backend.com \
   --dart-define=BACKEND_TIMEZONE_OFFSET_MINUTES=-300
 ```
 
@@ -382,6 +386,43 @@ flutter channel master
 
 ---
 
+## 🔔 Firebase y Notificaciones
+
+### Generar Launcher Icons
+
+```bash
+# Generar iconos para todas las plataformas
+flutter pub run flutter_launcher_icons
+
+# Output: Genera iconos en:
+# - android/app/src/main/res/mipmap-*/ic_launcher.png
+# - ios/Runner/Assets.xcassets/AppIcon.appiconset/
+# - web/icons/
+# - windows/runner/resources/
+```
+
+### Ver Token FCM (Debug)
+
+```bash
+# El token FCM se muestra en logs al iniciar la app
+flutter run | grep "FCM Token"
+# O simplemente busca en la salida de flutter run
+```
+
+### Probar Notificaciones
+
+```bash
+# 1. Ejecuta la app
+flutter run
+
+# 2. Copia el FCM token de los logs
+
+# 3. Envía notificación de prueba desde Firebase Console:
+# https://console.firebase.google.com/project/sigetu-b10c0/notification
+```
+
+---
+
 ## 📱 Gestión de Dispositivos
 
 ### Listar Dispositivos Disponibles
@@ -503,4 +544,4 @@ echo "✅ Listo para commit"
 
 ---
 
-**Última actualización:** Marzo 2026
+**Última actualización:** Abril 2026

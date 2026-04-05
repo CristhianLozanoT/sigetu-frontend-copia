@@ -40,29 +40,40 @@ Digitalizar y automatizar el proceso de gestión de citas/turnos en institucione
 
 ---
 
-## 📦 Alcance Funcional (MVP)
+## 📋 Alcance Funcional (MVP)
 
-### Fase 1: Autenticación
+### Fase 1: Autenticación ✅
 - [x] Login con credenciales universitarias
-- [x] Gestión de sesiones
+- [x] Registro de nuevos usuarios
+- [x] **Modo invitado (guest)** con device_id
+- [x] Gestión de sesiones con JWT
+- [x] Auto-refresh de tokens
 - [x] Logout
 
-### Fase 2: Citas (Core)
+### Fase 2: Citas (Core) ✅
 - [x] Visualizar disponibilidad de citas
 - [x] Agendar cita (estudiante)
-- [x] Confirmar/Rechazar cita (secretaria)
-- [x] Cancelar cita (ambos)
+- [x] Reprogramar citas
+- [x] **7 estados de cita:** pendiente, llamando, en_atencion, atendido, no_asistio, finalizada, cancelada
+- [x] Confirmar/cambiar estado (secretaria/admin)
+- [x] Cancelar cita (estudiante y secretaria)
 - [x] Visualizar historial de citas
+- [x] Extender tiempo de atención
 
-### Fase 3: Comunicación en Tiempo Real
-- [x] WebSocket para actualizaciones instantáneas
-- [x] Notificaciones de cambios de estado
-- [x] Sincronización de datos
+### Fase 3: Comunicación en Tiempo Real ✅
+- [x] WebSocket con reconexión automática (cada 3s)
+- [x] Notificaciones Firebase Cloud Messaging
+- [x] Sincronización de FCM token con backend
+- [x] Notificaciones locales en Android
+- [x] Actualización instantánea de estados
 
-### Fase 4: Múltiples Sedes
-- [x] Dashboard para estudiante
-- [x] Panel para secretaria
-- [x] Panel para administrador de sede
+### Fase 4: Múltiples Roles y Sedes ✅
+- [x] Dashboard para estudiante (5 pantallas)
+- [x] Panel para secretaria (4 pantallas)
+- [x] Panel para administrativo (3 pantallas)
+- [x] Panel para admisiones y mercadeo (2 pantallas)
+- [x] Selección y gestión de sedes (headquarters)
+- [x] Componentes compartidos (shared)
 
 ---
 
@@ -127,64 +138,81 @@ Otros usuarios ven actualización inmediata
 
 ## 🚀 Roadmap Inicial
 
-### Trimestre 1 (Q1)
-- ✅ MVP con autenticación y citas básicas
+### Fase 1 - MVP ✅ (Completado)
+- ✅ Autenticación (login, registro, modo guest)
+- ✅ Gestión de citas básicas
 - ✅ Sincronización con WebSocket
-- ✅ Aplicación en Android e iOS
+- ✅ Multi-rol (estudiante, secretaria, admin, admisiones)
+- ✅ Notificaciones Firebase
+- ✅ Android, iOS, Web
 
-### Trimestre 2 (Q2)
-- 🔄 Reportes y analytics
-- 🔄 Notificaciones push
-- 🔄 Exportar historial (PDF)
+### Fase 2 - En Progreso 🔄
+- ⚠️ Tests unitarios y de integración (pendiente)
+- 📋 Reportes y analytics
+- 📋 Exportar historial (PDF)
 
-### Trimestre 3 (Q3)
-- 📋 API avanzada (filtros, búsqueda)
+### Fase 3 - Futuro 🎯
 - 📋 Integración SSO (LDAP/OAuth)
-- 📋 Web version
-
-### Trimestre 4 (Q4)
-- 🎯 Optimizaciones y escalabilidad
-- 🎯 Soporte multi-idioma
-- 🎯 Publicación en tiendas oficiales
+- 📋 Soporte multi-idioma
+- 📋 Optimizaciones de rendimiento
+- 📋 Publicación en tiendas oficiales
 
 ---
 
 ## 📊 Características Técnicas Clave
 
 ### 1. Autenticación y Sesiones
-- Token-based (JWT probable)
-- Gestión automática de sesiones
-- Logout en caso de invalidación
+- Token-based con JWT (access + refresh tokens)
+- **Modo invitado** con identificación por device_id
+- Gestión automática de sesiones y auto-refresh
+- Almacenamiento seguro: `flutter_secure_storage` (Android), cookies HttpOnly (Web)
+- Logout automático en caso de invalidación
 
 ### 2. API REST
-- Endpoint: `http://{API_BASE_URL}/appointments`
-- Métodos estándar: GET, POST, PUT, DELETE
-- Tokens en header `Authorization`
+- **Producción:** `https://sigetu-backend.onrender.com`
+- **Desarrollo:** Configurable con `--dart-define=API_BASE_URL`
+- Métodos estándar: GET, POST, PATCH
+- Tokens en header `Authorization: Bearer {token}`
+- **30+ endpoints** para gestión completa
 
 ### 3. WebSocket en Tiempo Real
-- URL: `{API_BASE_URL}/appointments/ws`
-- Sincronización instantánea de citas
-- Notificaciones de cambios
+- URL: `wss://sigetu-backend.onrender.com/appointments/ws?token=JWT`
+- **Reconexión automática** cada 3 segundos si falla
+- Sincronización instantánea de cambios de citas
+- Notificaciones de cambios de estado en tiempo real
 
-### 4. Manejo de Fechas y Horas
-- Formatting: **AM/PM** en toda la UI
-- Parseo: Backend proporciona offset de zona horaria
+### 4. Notificaciones Push
+- **Firebase Cloud Messaging** integrado
+- Sincronización de FCM token con backend (`POST /notifications/device-token`)
+- Notificaciones locales en Android (canal 'citas')
+- Soporte para Web con VAPID key
+- Manejo de mensajes en foreground
+
+### 5. Manejo de Fechas y Horas
+- Formatting: **AM/PM** en toda la UI (usando `intl`)
+- Parseo: Backend proporciona offset de zona horaria (default UTC-5)
+- Utilidades: `AppDateFormatter` y `BackendDateTime`
 - Precisión: Minutos
 
-### 5. Multiplataforma
-- **Android**: Compilación APK
-- **iOS**: Compilación IPA
-- **Web**: Compilación en navegador (futuro)
+### 6. Multiplataforma
+- **Android**: APK/AAB compilable
+- **iOS**: IPA compilable (Bundle ID: `com.example.sigetu`)
+- **Web**: Compilación lista, soporte completo
+- **Windows**: Configuración de launcher icons
+- **macOS**: Configuración lista
 
 ---
 
 ## 🔐 Consideraciones de Seguridad
 
-- [ ] Tokens guardados en almacenamiento seguro
-- [ ] HTTPS en producción
-- [ ] Validación de entrada en cliente y servidor
-- [ ] Logout automático en sesión inválida
-- [ ] No enviar datos sensibles en logs
+- [x] Tokens guardados en almacenamiento seguro (`flutter_secure_storage` en Android)
+- [x] Cookies HttpOnly para Web
+- [x] HTTPS en producción (`https://sigetu-backend.onrender.com`)
+- [x] WSS (WebSocket Secure) en producción
+- [x] Validación de entrada en cliente
+- [x] Logout automático en sesión inválida
+- [ ] No enviar datos sensibles en logs (revisar)
+- [x] Device_id para trazabilidad en modo guest
 
 ---
 
@@ -211,11 +239,14 @@ Otros usuarios ven actualización inmediata
 
 ## 📝 Notas Importantes
 
-1. **Base de datos**: Manejada por backend, frontend solo consume API
-2. **Autenticación**: Integrada con sistema universitario (presumiblemente)
+1. **Base de datos**: Manejada por backend, frontend solo consume API REST
+2. **Autenticación**: Sistema propio con JWT + modo invitado opcional
 3. **Escalabilidad**: Diseño permite múltiples sedes sin cambios mayores
 4. **Mantenibilidad**: Clean Architecture facilita cambios futuros
+5. **Firebase**: Ya configurado y en uso para notificaciones push
+6. **Tests**: Pendientes de implementar (actualmente solo placeholder)
+7. **Bundle ID iOS**: Usar placeholder `com.example.sigetu`, cambiar a `com.uniautonoma.sigetu` en producción
 
 ---
 
-**Última actualización:** Marzo 2026
+**Última actualización:** Abril 2026

@@ -152,19 +152,24 @@ void main() {
 
 ```dart
 class AuthSession {
-  static String? _token;
+  static String? accessToken;
+  static String? refreshToken;
+  static bool isGuest = false;
+  static String? deviceId;
   static ValueNotifier<int> sessionInvalidation = ValueNotifier(0);
   
-  static void setToken(String token) => _token = token;
-  static String? getToken() => _token;
-  static void logout() => sessionInvalidation.value++;
+  static Future<void> restore() async { /* Restaura sesión de storage */ }
+  static Future<void> setTokens(String access, String refresh) async { /* Guarda tokens */ }
+  static Future<void> expireSession() async { /* Logout y limpia storage */ }
 }
 ```
 
-**Uso:**
-- Guardar/obtener token JWT
-- Disparar evento de logout global
-- Acceder desde cualquier parte de la app
+**Características:**
+- Maneja **tokens JWT** (access + refresh)
+- Soporta **modo invitado** (guest) con device_id
+- **Almacenamiento seguro:** `flutter_secure_storage` (Android), cookies HttpOnly (Web)
+- **Restauración automática** de sesión al iniciar app
+- Notifica logout global mediante `sessionInvalidation`
 
 #### ✅ core/constants/api_constants.dart
 **Centraliza configuración de API.**
@@ -173,33 +178,77 @@ class AuthSession {
 class ApiConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.240.178.191:8000',
+    defaultValue: 'https://sigetu-backend.onrender.com',
   );
   
-  static String get appointmentsWsUrl { ... }
+  static String get appointmentsWsUrl { 
+    // Construye wss:// o ws:// automáticamente desde baseUrl
+  }
+  
+  static const int backendTimezoneOffsetMinutes = 
+    int.fromEnvironment('BACKEND_TIMEZONE_OFFSET_MINUTES', defaultValue: -300);
 }
 ```
 
 **Uso:**
-- Pasar `--dart-define=API_BASE_URL=...` al ejecutar
-- Mismo para WebSocket
-- Offset de zona horaria backend
+- **Producción:** Usa default `https://sigetu-backend.onrender.com`
+- **Desarrollo:** Pasar `--dart-define=API_BASE_URL=http://...` al ejecutar
+- **WebSocket:** Se construye automáticamente (`wss://` si HTTPS, `ws://` si HTTP)
+- **Zona horaria:** Default UTC-5 (-300 minutos)
 
 #### ✅ core/constants/appointment_statuses.dart
 **Estados posibles de una cita.**
 
 ```dart
 class AppointmentStatuses {
-  static const pending = 'pending';
-  static const confirmed = 'confirmed';
-  static const cancelled = 'cancelled';
+  static const pendiente = 'pendiente';
+  static const llamando = 'llamando';
+  static const enAtencion = 'en_atencion';
+  static const atendido = 'atendido';
+  static const noAsistio = 'no_asistio';
+  static const finalizada = 'finalizada';
+  static const cancelada = 'cancelada';
 }
+```
+
+**Flujo de estados:**
+```
+pendiente → llamando → en_atencion → atendido/no_asistio → finalizada
+                                   ↘ cancelada (en cualquier momento)
 ```
 
 #### ✅ core/realtime/
 **Gestión de WebSocket para actualizaciones en tiempo real.**
 
-Conecta a `/appointments/ws` y sincroniza cambios instantáneamente sin recargar.
+```dart
+class AppointmentsRealtimeService {
+  // URL: wss://sigetu-backend.onrender.com/appointments/ws?token=JWT
+  WebSocketChannel? _channel;
+  final _updatesController = StreamController<void>.broadcast();
+  
+  Stream<void> get updates => _updatesController.stream;
+  
+  void connect() {
+    _channel = WebSocketChannel.connect(uriWithToken);
+    _channel!.stream.listen(
+      (message) => _updatesController.add(null),
+      onDone: _scheduleReconnect,
+      onError: (_) => _scheduleReconnect(),
+    );
+  }
+  
+  void _scheduleReconnect() {
+    Timer(const Duration(seconds: 3), connect);
+  }
+}
+```
+
+**Características:**
+- Conecta a `/appointments/ws` con token JWT en query parameter
+- **Reconexión automática** cada 3 segundos si falla
+- Sincroniza cambios de citas instantáneamente
+- Emite stream `updates` que widgets pueden escuchar
+- Se conecta/desconecta automáticamente según estado de sesión
 
 #### ✅ core/theme/app_theme.dart
 **Sistema de temas: colores, tipografía, estilos.**
@@ -243,9 +292,50 @@ class BackendDateTime {
 #### ✅ core/widgets/
 **Componentes UI reutilizables por features.**
 
-- `AppBottomNav` - Barra de navegación
-- `AppToast` - Notificaciones flotantes
+- `AppBottomNav` - Barra de navegación (3 tabs: Inicio, Mis Turnos, Perfil)
+- `AppToast` - Notificaciones flotantes (usa `fluttertoast`)
 - `SectionHeader` - Encabezados de secciones
+
+#### ✅ core/notifications/
+**Sistema de notificaciones Firebase Cloud Messaging.**
+
+```dart
+class NotificationService {
+  // Inicializa Firebase Cloud Messaging
+  static Future<void> initialize() async {
+    await Firebase.initializeApp();
+    // Solicita permisos (iOS)
+    await FirebaseMessaging.instance.requestPermission();
+    // Crea canal de notificaciones (Android)
+    const channel = AndroidNotificationChannel('citas', ...);
+    await flutterLocalNotificationsPlugin.create(channel);
+  }
+  
+  // Maneja mensajes en foreground
+  FirebaseMessaging.onMessage.listen((message) { 
+    // Muestra notificación local
+  });
+}
+
+class FCMTokenSync {
+  // Sincroniza FCM token con backend
+  static Future<void> sync() async {
+    final token = await FirebaseMessaging.instance.getToken();
+    await http.post('/notifications/device-token', body: {
+      'device_id': deviceId,
+      'fcm_token': token,
+      'platform': platform,
+    });
+  }
+}
+```
+
+**Características:**
+- **Firebase Cloud Messaging** para notificaciones push
+- **Notificaciones locales** en Android (canal 'citas')
+- **Sincronización automática** de token FCM con backend
+- Maneja mensajes en **foreground** (Android + Web)
+- **VAPID Key** configurado para web
 
 ---
 
@@ -409,27 +499,50 @@ class StudentDashboardRoutes {
 ### 4. Features Actuales
 
 #### 🔐 auth/
-- Autenticación (login, registro)
-- Gestión de sesiones
+- Login con credenciales
+- Registro de nuevos usuarios
+- **Modo invitado (guest)** - Acceso sin credenciales usando device_id
+- Gestión de sesiones con tokens JWT
+- Auto-refresh de tokens
 - Logout
 
 #### 📊 student_dashboard/
-- Dashboard del estudiante
-- Ver citas disponibles
-- Agendar nuevas citas
-- Ver historial
+- Dashboard del estudiante con navegación
+- Ver citas disponibles y estado
+- Agendar nuevas citas (selección de sede)
+- Ver historial de citas
+- **Reprogramar citas**
+- Perfil de usuario
 
 #### 👩‍💼 secretary/
-- Panel de secretaria
-- Visualizar citas pendientes
-- Confirmar/rechazar citas
-- Gestionar horarios
+- Panel de secretaria con shell de navegación
+- Cola de citas en tiempo real (filtrado por sede)
+- Detalle completo de cada cita
+- **Cambiar estado de citas:** pendiente → llamando → en_atencion → atendido/no_asistio
+- **Iniciar atención y extender tiempo**
+- Historial de atenciones
 
-#### 🏢 headquarters/
-- Panel administrativo
-- Gestionar usuarios
-- Configurar horarios
-- Reportes
+#### 🏢 administrative/
+- Panel administrativo similar a secretaria
+- Cola de citas con gestión completa
+- Cambiar estados de citas
+- Historial filtrado por sede
+- Iniciar atención y extender tiempo
+
+#### 🎓 admisiones_mercadeo/
+- Panel específico para admisiones y mercadeo
+- Shell de navegación independiente
+- Historial filtrado automáticamente por sede `sede_admisiones_mercadeo`
+
+#### 🏫 headquarters/
+- Selección de sede (administrativa, asistencia estudiantil, admisiones)
+- Agendar citas desde diferentes sedes
+- Navegación a paneles específicos según sede
+
+#### 🔄 shared/
+- Componentes compartidos entre features
+- Vistas reutilizables de historial
+- Tarjetas de cita (appointment_card)
 
 ---
 
@@ -491,11 +604,27 @@ import 'package:sigetu/features/auth/domain/entities/user.dart';
 
 Ubicación: `/test/`
 
-**Testea primero Domain (lógica pura):**
+```
+test/
+└── widget_test.dart    (Test placeholder, pendiente implementar tests reales)
+```
+
+⚠️ **Estado actual:** Solo existe un test placeholder del template de Flutter.
+
+**Pendiente implementar:**
+- Tests unitarios de Domain (UseCases, Entities)
+- Tests de Repositories (con mocks)
+- Tests de Widgets (screens, componentes)
+- Tests de integración
+
+**Ejemplo de test recomendado:**
 ```dart
 test('LoginUseCase retorna token válido', () async {
-  final mockRepository = MockAppointmentRepository();
+  final mockRepository = MockAuthRepository();
   final usecase = LoginUseCase(mockRepository);
+  
+  when(mockRepository.login('user@uni.edu', '1234'))
+      .thenAnswer((_) async => 'valid-token');
   
   final result = await usecase('user@uni.edu', '1234');
   
@@ -535,7 +664,12 @@ Container(
 3. **Validación:** En Domain (lógica) y Presentation (UX)
 4. **Errores:** Muestra mensajes del backend cuando existan
 5. **Fechas:** Siempre con AM/PM, usa `AppDateFormatter`
+6. **Modo guest:** Usa `device_id` para identificar usuarios sin cuenta
+7. **Notificaciones:** Firebase FCM ya configurado, sincroniza token con backend
+8. **WebSocket:** Reconexión automática cada 3 segundos
+9. **Multi-plataforma:** Código preparado para Android, iOS, Web, Windows, macOS
+10. **Tests:** Pendientes de implementar (solo existe placeholder)
 
 ---
 
-**Última actualización:** Marzo 2026
+**Última actualización:** Abril 2026
