@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "882177455207",
+    "project_id": "sigetu-b10c0",
+    "storage_bucket": "sigetu-b10c0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882177455207:android:600e3c219b1640ee6e90c2",
+        "android_client_info": {
+          "package_name": "com.example.sigetu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANwsO3RoQGihTuUpF77hbLpJbDVlYpQ40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -13,6 +13,8 @@ class SecretaryAppointmentDetail {
     required this.scheduledAt,
     required this.student,
     this.attentionStartedAt,
+    this.isGuest = false,
+    this.deviceId,
   });
 
   final int id;
@@ -26,6 +28,8 @@ class SecretaryAppointmentDetail {
   final DateTime scheduledAt;
   final DateTime? attentionStartedAt;
   final SecretaryStudentDetail student;
+  final bool isGuest;
+  final String? deviceId;
 
   static int _parseInt(dynamic value) {
     if (value is int) return value;
@@ -54,6 +58,8 @@ class SecretaryAppointmentDetail {
       student: SecretaryStudentDetail.fromJson(
         (json['student'] as Map<String, dynamic>? ?? const {}),
       ),
+      isGuest: json['is_guest'] == true || json['is_guest'] == 'true',
+      deviceId: json['device_id']?.toString(),
     );
   }
 }

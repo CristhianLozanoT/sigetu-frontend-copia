@@ -11,6 +11,9 @@ class SecretaryAppointment {
     required this.turnNumber,
     required this.createdAt,
     required this.scheduledAt,
+    this.studentId,
+    this.deviceId,
+    this.studentProgramaAcademico,
   });
 
   final int id;
@@ -22,6 +25,9 @@ class SecretaryAppointment {
   final String turnNumber;
   final DateTime createdAt;
   final DateTime scheduledAt;
+  final int? studentId;
+  final String? deviceId;
+  final String? studentProgramaAcademico;
 
   static DateTime _parseDate(dynamic value) {
     return BackendDateTime.parse(value);
@@ -47,6 +53,11 @@ class SecretaryAppointment {
       turnNumber: (json['turn_number'] ?? '').toString(),
       createdAt: createdAt,
       scheduledAt: scheduledAt,
+      studentId: json['student_id'] != null
+          ? _parseInt(json['student_id'])
+          : null,
+      deviceId: json['device_id']?.toString(),
+      studentProgramaAcademico: json['student_programa_academico']?.toString(),
     );
   }
 }

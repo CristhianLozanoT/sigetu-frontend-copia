@@ -1,6 +1,10 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sigetu/core/auth/auth_http.dart';
+import 'package:sigetu/core/auth/http_client_stub.dart'
+    if (dart.library.html) 'package:sigetu/core/auth/http_client_web.dart';
 import 'package:sigetu/core/constants/api_constants.dart';
 import 'package:sigetu/features/auth/domain/user.dart';
 import 'package:sigetu/features/auth/domain/user_register.dart';
@@ -21,6 +25,9 @@ class AuthApi {
   AuthApi({String? baseUrl}) : baseUrl = baseUrl ?? ApiConstants.baseUrl;
 
   final String baseUrl;
+
+  // Cliente para Web (envía cookies automáticamente)
+  static final http.Client _webClient = buildWebClient();
 
   String _extractErrorMessage(http.Response response) {
     try {
@@ -68,10 +75,12 @@ class AuthApi {
           : null,
     );
 
-    final response = await http.post(
-      uri,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(user.toJson()),
+    final response = await _httpRequest(
+      (client) => client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(user.toJson()),
+      ),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -89,10 +98,12 @@ class AuthApi {
   }) async {
     final url = Uri.parse('$baseUrl/auth/login');
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({'email': email, 'password': password}),
+    final response = await _httpRequest(
+      (client) => client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      ),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -106,7 +117,10 @@ class AuthApi {
               body['token'] ??
               body['jwt'] ??
               body['accessToken'];
-          final refreshToken = body['refresh_token'] ?? body['refreshToken'];
+          // Web: el refresh token viene en cookie HttpOnly, no en el body
+          final refreshToken = kIsWeb
+              ? null
+              : (body['refresh_token'] ?? body['refreshToken']);
 
           if (accessToken is String && accessToken.isNotEmpty) {
             return AuthLoginResponse(
@@ -132,14 +146,25 @@ class AuthApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<AuthLoginResponse> refresh({required String refreshToken}) async {
+  /// Refresca el token de acceso.
+  /// - Web: no envía body, el backend lee la cookie HttpOnly
+  /// - Android: envía refresh_token en el body
+  Future<AuthLoginResponse> refresh({String? refreshToken}) async {
     final url = Uri.parse('$baseUrl/auth/refresh');
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({'refresh_token': refreshToken}),
-    );
+    final response = await _httpRequest((client) {
+      if (kIsWeb) {
+        // Web: sin body, cookie se envía automática
+        return client.post(url, headers: {'Content-Type': 'application/json'});
+      } else {
+        // Android: enviar refresh_token en body
+        return client.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refresh_token': refreshToken}),
+        );
+      }
+    });
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final successMessage = _extractSuccessMessage(response);
@@ -152,7 +177,10 @@ class AuthApi {
               body['token'] ??
               body['jwt'] ??
               body['accessToken'];
-          final newRefreshToken = body['refresh_token'] ?? body['refreshToken'];
+          // Web: no devuelve refresh_token (ya está en cookie)
+          final newRefreshToken = kIsWeb
+              ? null
+              : (body['refresh_token'] ?? body['refreshToken']);
 
           if (accessToken is String && accessToken.isNotEmpty) {
             return AuthLoginResponse(
@@ -179,14 +207,25 @@ class AuthApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<String?> logout({required String refreshToken}) async {
+  /// Cierra sesión.
+  /// - Web: no envía body, el backend invalida la cookie
+  /// - Android: envía refresh_token en el body
+  Future<String?> logout({String? refreshToken}) async {
     final url = Uri.parse('$baseUrl/auth/logout');
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({'refresh_token': refreshToken}),
-    );
+    final response = await _httpRequest((client) {
+      if (kIsWeb) {
+        // Web: sin body, cookie se envía automática
+        return client.post(url, headers: {'Content-Type': 'application/json'});
+      } else {
+        // Android: enviar refresh_token en body
+        return client.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refresh_token': refreshToken}),
+        );
+      }
+    });
 
     if (response.statusCode == 200 ||
         response.statusCode == 201 ||
@@ -219,10 +258,12 @@ class AuthApi {
   Future<AuthLoginResponse> loginGuest({required String deviceId}) async {
     final url = Uri.parse('$baseUrl/auth/guest');
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'device_id': deviceId}),
+    final response = await _httpRequest(
+      (client) => client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'device_id': deviceId}),
+      ),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -247,5 +288,14 @@ class AuthApi {
     }
 
     throw Exception('Error del servidor: ${response.statusCode}');
+  }
+
+  Future<http.Response> _httpRequest(
+    Future<http.Response> Function(http.Client client) requestFn,
+  ) {
+    if (kIsWeb) {
+      return requestFn(_webClient);
+    }
+    return requestFn(http.Client());
   }
 }

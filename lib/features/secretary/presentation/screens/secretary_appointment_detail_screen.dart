@@ -152,6 +152,7 @@ class _SecretaryAppointmentDetailScreenState
       final successMessage = await _api.updateAppointmentStatus(
         appointmentId: widget.detail.id,
         status: status,
+        isGuest: widget.detail.isGuest,
       );
 
       if (!mounted) return;
@@ -265,7 +266,10 @@ class _SecretaryAppointmentDetailScreenState
   Future<void> _startAttention() async {
     setState(() => _updatingStatus = AppointmentStatuses.inAttention);
     try {
-      await _api.startAttention(appointmentId: widget.detail.id);
+      await _api.startAttention(
+        appointmentId: widget.detail.id,
+        isGuest: widget.detail.isGuest,
+      );
       if (!mounted) return;
       setState(() {
         _currentStatus = AppointmentStatuses.inAttention;
@@ -287,7 +291,10 @@ class _SecretaryAppointmentDetailScreenState
     if (_isExtending) return;
     setState(() => _isExtending = true);
     try {
-      await _api.extendTime(appointmentId: widget.detail.id);
+      await _api.extendTime(
+        appointmentId: widget.detail.id,
+        isGuest: widget.detail.isGuest,
+      );
       if (!mounted) return;
       setState(() {
         _extraMinutes++;

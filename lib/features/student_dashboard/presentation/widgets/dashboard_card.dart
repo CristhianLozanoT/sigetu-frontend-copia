@@ -35,9 +35,7 @@ class DashboardCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: gradient,
-          color: gradient == null
-              ? (cardColor ?? colorScheme.surface)
-              : null,
+          color: gradient == null ? (cardColor ?? colorScheme.surface) : null,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: (iconColor ?? colorScheme.primary).withOpacity(0.15),
@@ -53,7 +51,6 @@ class DashboardCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             if (imagePath != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
@@ -73,8 +70,7 @@ class DashboardCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: (iconColor ?? colorScheme.primary)
-                        .withOpacity(0.1),
+                    color: (iconColor ?? colorScheme.primary).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
@@ -99,14 +95,11 @@ class DashboardCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
-                              color: textColor ??
-                                  colorScheme.onSurface
-                                      .withOpacity(0.7),
-                            ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              textColor ??
+                              colorScheme.onSurface.withOpacity(0.7),
+                        ),
                       ),
                     ],
                   ),

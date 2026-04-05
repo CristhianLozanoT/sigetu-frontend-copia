@@ -11,9 +11,15 @@ class AppointmentRequest {
   final String context;
   final DateTime scheduledAt;
 
+  String _toColombiaIso(DateTime dt) {
+    // Formatea el datetime con offset Colombia -05:00 explícito
+    final s = dt.toIso8601String().split('.').first;
+    return '${s}-05:00';
+  }
+
   Map<String, dynamic> toJson() => {
-        'category': category,
-        'context': context,
-        'scheduled_at': BackendDateTime.formatForApi(scheduledAt),
-      };
+    'category': category,
+    'context': context,
+    'scheduled_at': _toColombiaIso(scheduledAt),
+  };
 }

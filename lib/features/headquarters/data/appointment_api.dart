@@ -44,7 +44,10 @@ class AppointmentApi {
     return null;
   }
 
-  Future<String?> createAppointment(AppointmentRequest request, {String? sede}) async {
+  Future<String?> createAppointment(
+    AppointmentRequest request, {
+    String? sede,
+  }) async {
     final baseUri = Uri.parse('$baseUrl$endpointPath');
     final trimmedSede = sede?.trim();
     final queryParameters = {
@@ -76,7 +79,10 @@ class AppointmentApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<List<TimeOfDay>> fetchOccupiedSlots(DateTime date, {String? sede}) async {
+  Future<List<TimeOfDay>> fetchOccupiedSlots(
+    DateTime date, {
+    String? sede,
+  }) async {
     final baseUri = Uri.parse('$baseUrl$endpointPath/horarios-ocupados');
     final trimmedSede = sede?.trim();
     final queryParameters = {
@@ -104,8 +110,18 @@ class AppointmentApi {
         RegExp(r'(Z|[+-]\d{2}:?\d{2})$'),
         '',
       );
-      final dt = DateTime.tryParse(str);
-      if (dt == null) continue;
+      // Tratar como hora Colombia (UTC-5) explícitamente
+      final dtLocal = DateTime.tryParse(str);
+      if (dtLocal == null) continue;
+      // Adjuntar offset Colombia para tener un datetime con zona horaria correcta
+      final dt = DateTime(
+        dtLocal.year,
+        dtLocal.month,
+        dtLocal.day,
+        dtLocal.hour,
+        dtLocal.minute,
+        dtLocal.second,
+      );
       if (dt.year != date.year || dt.month != date.month || dt.day != date.day)
         continue;
 
@@ -116,7 +132,17 @@ class AppointmentApi {
           RegExp(r'(Z|[+-]\d{2}:?\d{2})$'),
           '',
         );
-        endsAt = DateTime.tryParse(endsStr);
+        final endsLocal = DateTime.tryParse(endsStr);
+        if (endsLocal != null) {
+          endsAt = DateTime(
+            endsLocal.year,
+            endsLocal.month,
+            endsLocal.day,
+            endsLocal.hour,
+            endsLocal.minute,
+            endsLocal.second,
+          );
+        }
       }
 
       entries.add((dt: dt, status: status, endsAt: endsAt));

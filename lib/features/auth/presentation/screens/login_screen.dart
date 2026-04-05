@@ -12,6 +12,7 @@ import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
+import 'package:sigetu/core/notifications/fcm_token_sync.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -119,20 +120,24 @@ class _LoginScreenState extends State<LoginScreen>
         refresh: loginResponse.refreshToken,
       );
 
+      // Sincronizar token FCM tras login exitoso
+      await FcmTokenSync.syncFcmToken();
+      FcmTokenSync.listenTokenRefresh();
+
       final role = _extractRoleFromToken(loginResponse.accessToken);
       final isSecretaryRole =
           role == 'secretaria' ||
           role == 'secretary' ||
           role == 'role_secretaria';
-        final isAdministrativeRole =
+      final isAdministrativeRole =
           role == 'administrativo' ||
           role == 'administrativa' ||
           role == 'admin' ||
           role == 'role_administrativo';
-          final isAdmissionsMarketingRole =
-            role == 'admisiones_mercadeo' ||
-            role == 'admisionesmercadeo' ||
-            role == 'role_admisiones_mercadeo';
+      final isAdmissionsMarketingRole =
+          role == 'admisiones_mercadeo' ||
+          role == 'admisionesmercadeo' ||
+          role == 'role_admisiones_mercadeo';
 
       await _showRequestMessage(
         loginResponse.message ?? 'Inicio de sesión exitoso',
@@ -144,8 +149,8 @@ class _LoginScreenState extends State<LoginScreen>
             ? SecretaryRoutes.home
             : isAdministrativeRole
             ? AdministrativeRoutes.home
-          : isAdmissionsMarketingRole
-          ? AdmisionesMercadeoRoutes.home
+            : isAdmissionsMarketingRole
+            ? AdmisionesMercadeoRoutes.home
             : StudentDashboardRoutes.dashboard,
       );
     } catch (error) {
@@ -170,6 +175,11 @@ class _LoginScreenState extends State<LoginScreen>
         guest: true,
         guestDeviceId: id,
       );
+
+      // Sincronizar token FCM para invitados
+      await FcmTokenSync.syncFcmToken();
+      FcmTokenSync.listenTokenRefresh();
+
       Navigator.pushReplacementNamed(context, StudentDashboardRoutes.dashboard);
     } catch (error) {
       if (!mounted) return;

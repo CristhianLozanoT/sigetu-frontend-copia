@@ -16,20 +16,26 @@ class SeleccionarSedeScreen extends StatelessWidget {
     final isWide = !Responsive.isMobile(context);
     final isGuest = AuthSession.isGuest;
 
-    Widget cardAsistencia = DashboardCard(
-      title: 'Asistencia Estudiantil',
-      subtitle: 'Orientación y apoyo académico',
-      imagePath: 'assets/images/asistencia_estudiantil.png',
-      icon: Icons.support_agent_outlined,
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const AsistenciaEstudiantilScreen(),
-          ),
-        );
-      },
-    );
+    Widget cardAsistencia = isGuest
+        ? _LockedCard(
+            title: 'Asistencia Estudiantil',
+            subtitle: 'Disponible solo para usuarios registrados',
+            icon: Icons.support_agent_outlined,
+          )
+        : DashboardCard(
+            title: 'Asistencia Estudiantil',
+            subtitle: 'Orientación y apoyo académico',
+            imagePath: 'assets/images/asistencia_estudiantil.png',
+            icon: Icons.support_agent_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AsistenciaEstudiantilScreen(),
+                ),
+              );
+            },
+          );
 
     Widget cardAdministrativa = isGuest
         ? _LockedCard(
@@ -52,26 +58,18 @@ class SeleccionarSedeScreen extends StatelessWidget {
             },
           );
 
-    Widget cardAdmisiones = isGuest
-        ? _LockedCard(
-            title: 'Admisiones y mercadeo',
-            subtitle: 'Disponible solo para usuarios registrados',
-            icon: Icons.how_to_reg_outlined,
-          )
-        : DashboardCard(
-            title: 'Admisiones y mercadeo',
-            subtitle: 'Procesos de inscripción y matrícula',
-            imagePath: 'assets/images/asistencia_estudiantil.png',
-            icon: Icons.how_to_reg_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AdmisionesMercadeoScreen(),
-                ),
-              );
-            },
-          );
+    Widget cardAdmisiones = DashboardCard(
+      title: 'Admisiones y mercadeo',
+      subtitle: 'Procesos de inscripción y matrícula',
+      imagePath: 'assets/images/asistencia_estudiantil.png',
+      icon: Icons.how_to_reg_outlined,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AdmisionesMercadeoScreen()),
+        );
+      },
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Seleccionar sede')),
@@ -109,7 +107,6 @@ class SeleccionarSedeScreen extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// Tarjeta bloqueada para modo invitado

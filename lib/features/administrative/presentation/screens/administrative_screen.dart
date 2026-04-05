@@ -1,31 +1,30 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:sigetu/core/constants/appointment_statuses.dart';
 import 'package:sigetu/core/realtime/appointments_realtime_service.dart';
 import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/core/widgets/app_toast.dart';
-import 'package:sigetu/features/secretary/data/secretary_appointments_api.dart';
+import 'package:sigetu/features/administrative/data/administrative_appointments_api.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment.dart';
 import 'package:sigetu/features/secretary/presentation/screens/secretary_appointment_detail_screen.dart';
 import 'package:sigetu/features/shared/presentation/widgets/appointment_card.dart';
 
-class SecretaryScreen extends StatefulWidget {
-  const SecretaryScreen({
+class AdministrativeScreen extends StatefulWidget {
+  const AdministrativeScreen({
     super.key,
     this.sede,
-    this.appBarTitle = 'Secretaría - Citas',
+    this.appBarTitle = 'Administrativo - Citas',
   });
 
   final String? sede;
   final String appBarTitle;
 
   @override
-  State<SecretaryScreen> createState() => _SecretaryScreenState();
+  State<AdministrativeScreen> createState() => _AdministrativeScreenState();
 }
 
-class _SecretaryScreenState extends State<SecretaryScreen> {
-  late final SecretaryAppointmentsApi _api;
+class _AdministrativeScreenState extends State<AdministrativeScreen> {
+  late final AdministrativeAppointmentsApi _api;
   final _realtime = AppointmentsRealtimeService();
 
   bool _isLoading = true;
@@ -38,13 +37,9 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
   @override
   void initState() {
     super.initState();
-    _api = SecretaryAppointmentsApi(sede: widget.sede);
+    _api = AdministrativeAppointmentsApi(sede: widget.sede);
     _loadAppointments();
-    _realtime.connect();
-    _realtimeSubscription = _realtime.updates.listen((_) {
-      if (!mounted) return;
-      _loadAppointments(showLoader: false);
-    });
+    _connectRealtime();
   }
 
   @override
@@ -52,6 +47,14 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
     _realtimeSubscription?.cancel();
     unawaited(_realtime.dispose());
     super.dispose();
+  }
+
+  void _connectRealtime() {
+    _realtime.connect();
+    _realtimeSubscription = _realtime.updates.listen((_) {
+      if (!mounted) return;
+      _loadAppointments(showLoader: false);
+    });
   }
 
   Future<void> _loadAppointments({bool showLoader = true}) async {
@@ -116,7 +119,7 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
           context,
           message: backendMessage?.trim().isNotEmpty == true
               ? backendMessage!
-              : 'Turno ${detail.turnNumber}: ${_statusLabel(updatedStatus)}',
+              : 'Turno ${detail.turnNumber}: estado actualizado',
         );
       }
       await _loadAppointments(showLoader: false);
@@ -128,34 +131,6 @@ class _SecretaryScreenState extends State<SecretaryScreen> {
       if (mounted) {
         setState(() => _openingAppointmentId = null);
       }
-    }
-  }
-
-  String _titleCase(String value) {
-    return value
-        .split('_')
-        .map(
-          (part) => part.isEmpty
-              ? part
-              : '${part[0].toUpperCase()}${part.substring(1)}',
-        )
-        .join(' ');
-  }
-
-  String _statusLabel(String status) {
-    switch (status) {
-      case AppointmentStatuses.attended:
-        return 'Atendido';
-      case AppointmentStatuses.absent:
-        return 'No asistió';
-      case AppointmentStatuses.canceled:
-        return 'Cancelada';
-      case AppointmentStatuses.calling:
-        return 'Llamando';
-      case AppointmentStatuses.pending:
-        return 'Pendiente';
-      default:
-        return _titleCase(status);
     }
   }
 

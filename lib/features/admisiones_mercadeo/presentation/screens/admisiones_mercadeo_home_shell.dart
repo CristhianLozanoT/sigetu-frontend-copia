@@ -3,6 +3,7 @@ import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_contexts.dart';
 import 'package:sigetu/features/secretary/presentation/screens/secretary_screen.dart';
 import 'package:sigetu/features/student_dashboard/presentation/screens/perfil_screen.dart';
+import '../screens/admisiones_mercadeo_history_screen.dart';
 
 class AdmisionesMercadeoHomeShell extends StatefulWidget {
   const AdmisionesMercadeoHomeShell({super.key});
@@ -17,6 +18,7 @@ class _AdmisionesMercadeoHomeShellState
   int _currentIndex = 0;
 
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
   ];
@@ -51,7 +53,8 @@ class _AdmisionesMercadeoHomeShellState
             appBarTitle: 'Admisiones y mercadeo - Citas',
           ),
         ),
-        _buildNavigator(1, const PerfilScreen()),
+        _buildNavigator(1, const AdmisionesMercadeoHistoryScreen()),
+        _buildNavigator(2, const PerfilScreen()),
       ],
     );
 
@@ -71,6 +74,11 @@ class _AdmisionesMercadeoHomeShellState
                   icon: Icon(Icons.calendar_month_outlined),
                   selectedIcon: Icon(Icons.calendar_month_rounded),
                   label: Text('Citas'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.history),
+                  selectedIcon: Icon(Icons.history_rounded),
+                  label: Text('Historial'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.person_outline_rounded),
@@ -98,6 +106,12 @@ class _AdmisionesMercadeoHomeShellState
             selectedIcon: Icon(Icons.calendar_month_rounded),
             label: 'Citas',
             tooltip: 'Lista de citas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            selectedIcon: Icon(Icons.history_rounded),
+            label: 'Historial',
+            tooltip: 'Historial de citas',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

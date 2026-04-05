@@ -6,7 +6,16 @@ import 'package:sigetu/features/secretary/presentation/secretary_routes.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_routes.dart';
-void main() {
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/notifications/notification_service.dart';
+import 'firebase_options.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await AuthSession.restore();
   runApp(const MyApp());
 }
 
@@ -28,6 +37,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     AuthSession.sessionInvalidation.addListener(_handleSessionInvalidation);
+    NotificationService.initialize(_navigatorKey);
   }
 
   @override
@@ -66,10 +76,7 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
-    navigator.pushNamedAndRemoveUntil(
-      AuthRoutes.login,
-      (route) => false,
-    );
+    navigator.pushNamedAndRemoveUntil(AuthRoutes.login, (route) => false);
 
     _scaffoldMessengerKey.currentState?.showSnackBar(
       const SnackBar(
@@ -104,4 +111,3 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-  

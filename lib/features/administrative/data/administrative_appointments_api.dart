@@ -7,8 +7,8 @@ import 'package:sigetu/core/constants/api_constants.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment.dart';
 import 'package:sigetu/features/secretary/domain/secretary_appointment_detail.dart';
 
-class SecretaryAppointmentsApi {
-  SecretaryAppointmentsApi({String? baseUrl, this.sede})
+class AdministrativeAppointmentsApi {
+  AdministrativeAppointmentsApi({String? baseUrl, this.sede})
     : baseUrl = baseUrl ?? ApiConstants.baseUrl;
 
   final String baseUrl;
@@ -88,14 +88,6 @@ class SecretaryAppointmentsApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<String?> callTurn({required int appointmentId}) async {
-    await updateAppointmentStatus(
-      appointmentId: appointmentId,
-      status: AppointmentStatuses.calling,
-    );
-    return null;
-  }
-
   Future<SecretaryAppointmentDetail> fetchAppointmentDetail({
     required int appointmentId,
   }) async {
@@ -127,11 +119,8 @@ class SecretaryAppointmentsApi {
   Future<String?> updateAppointmentStatus({
     required int appointmentId,
     required String status,
-    bool isGuest = false,
   }) async {
-    final url = isGuest
-        ? Uri.parse('$baseUrl/appointments/guest/$appointmentId/status')
-        : Uri.parse('$baseUrl/appointments/$appointmentId/status');
+    final url = Uri.parse('$baseUrl/appointments/$appointmentId/status');
 
     final response = await AuthHttp.patch(
       url,
@@ -154,15 +143,10 @@ class SecretaryAppointmentsApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
-  Future<DateTime> startAttention({
-    required int appointmentId,
-    bool isGuest = false,
-  }) async {
-    final url = isGuest
-        ? Uri.parse(
-            '$baseUrl/appointments/guest/$appointmentId/start-attention',
-          )
-        : Uri.parse('$baseUrl/appointments/$appointmentId/start-attention');
+  Future<DateTime> startAttention({required int appointmentId}) async {
+    final url = Uri.parse(
+      '$baseUrl/appointments/$appointmentId/start-attention',
+    );
     final response = await AuthHttp.post(url, body: '{}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -181,13 +165,8 @@ class SecretaryAppointmentsApi {
     throw Exception(_extractErrorMessage(response));
   }
 
-  Future<void> extendTime({
-    required int appointmentId,
-    bool isGuest = false,
-  }) async {
-    final url = isGuest
-        ? Uri.parse('$baseUrl/appointments/guest/$appointmentId/extend-time')
-        : Uri.parse('$baseUrl/appointments/$appointmentId/extend-time');
+  Future<void> extendTime({required int appointmentId}) async {
+    final url = Uri.parse('$baseUrl/appointments/$appointmentId/extend-time');
     final response = await AuthHttp.post(url, body: '{}');
 
     if (response.statusCode == 200 ||
@@ -199,49 +178,8 @@ class SecretaryAppointmentsApi {
     throw Exception(_extractErrorMessage(response));
   }
 
-  /// Obtiene el historial de citas de invitados por device_id.
-  /// Requiere JWT de invitado (role=guest) en AuthSession.
-  Future<List<SecretaryAppointment>> fetchGuestHistory({
-    required String deviceId,
-  }) async {
-    final url = Uri.parse(
-      '$baseUrl/appointments/guest/history',
-    ).replace(queryParameters: {'device_id': deviceId});
-
-    final response = await AuthHttp.get(url);
-
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is List) {
-        return decoded
-            .whereType<Map<String, dynamic>>()
-            .map(SecretaryAppointment.fromJson)
-            .toList();
-      }
-
-      if (decoded is Map<String, dynamic> && decoded['items'] is List) {
-        return (decoded['items'] as List)
-            .whereType<Map<String, dynamic>>()
-            .map(SecretaryAppointment.fromJson)
-            .toList();
-      }
-
-      return [];
-    }
-
-    if (response.statusCode == 400 ||
-        response.statusCode == 401 ||
-        response.statusCode == 403 ||
-        response.statusCode == 404 ||
-        response.statusCode == 422) {
-      throw Exception(_extractErrorMessage(response));
-    }
-
-    throw Exception('Error del servidor: ${response.statusCode}');
-  }
-
-  /// Obtiene el historial de citas de secretaría (solo las atendidas por esta secretaría).
+  /// Obtiene el historial de citas del usuario autenticado.
+  /// El backend detecta el rol por el token JWT.
   /// Endpoint: GET /appointments/my-history
   Future<List<SecretaryAppointment>> fetchHistory() async {
     final url = Uri.parse('$baseUrl/appointments/my-history');

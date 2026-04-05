@@ -11,6 +11,7 @@ import 'package:sigetu/core/widgets/app_toast.dart';
 import 'package:sigetu/features/headquarters/domain/appointment_request.dart';
 import 'package:sigetu/features/student_dashboard/data/student_turns_api.dart';
 import 'package:sigetu/features/student_dashboard/domain/student_turn.dart';
+import 'package:sigetu/features/student_dashboard/presentation/screens/reprogram_cita_screen.dart';
 import 'package:sigetu/features/student_dashboard/presentation/widgets/student_turn_card.dart';
 
 class TurnosScreen extends StatefulWidget {
@@ -65,8 +66,10 @@ class _TurnosScreenState extends State<TurnosScreen> {
     try {
       final List<StudentTurn> turns;
       if (AuthSession.isGuest && AuthSession.deviceId != null) {
-        // Invitado: obtener citas por device_id (historial no aplica)
-        turns = await _api.fetchGuestTurns(AuthSession.deviceId!);
+        // Invitado: obtener citas actuales o historial por device_id
+        turns = _showHistory
+            ? await _api.fetchGuestHistory(AuthSession.deviceId!)
+            : await _api.fetchGuestTurns(AuthSession.deviceId!);
       } else {
         turns = _showHistory
             ? await _api.fetchMyTurnsHistory()
@@ -136,150 +139,16 @@ class _TurnosScreenState extends State<TurnosScreen> {
     return normalized == AppointmentStatuses.pending;
   }
 
-  List<TimeOfDay> _buildAvailableSlots() {
-    const int startMinutes = 8 * 60;
-    const int endMinutes = 17 * 60;
-    const int breakStartMinutes = 11 * 60 + 20;
-    const int breakEndMinutes = 14 * 60 + 30;
-    const int intervalMinutes = 30;
-
-    final slots = <TimeOfDay>[];
-
-    for (
-      int minutes = startMinutes;
-      minutes + intervalMinutes <= endMinutes;
-      minutes += intervalMinutes
-    ) {
-      final slotStart = minutes;
-      final slotEnd = minutes + intervalMinutes;
-      final overlapsBreak =
-          slotStart < breakEndMinutes && slotEnd > breakStartMinutes;
-      if (overlapsBreak) continue;
-
-      slots.add(TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60));
-    }
-
-    return slots;
-  }
-
-  Future<TimeOfDay?> _pickTimeSlot({required TimeOfDay initial}) async {
-    final slots = _buildAvailableSlots();
-
-    final hasInitial = slots.any(
-      (slot) => slot.hour == initial.hour && slot.minute == initial.minute,
-    );
-    final effectiveInitial = hasInitial ? initial : slots.first;
-
-    return showModalBottomSheet<TimeOfDay>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 8),
-                Text(
-                  'Seleccionar horario',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 360,
-                  child: ListView.separated(
-                    itemCount: slots.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 6),
-                    itemBuilder: (context, index) {
-                      final slot = slots[index];
-                      final selected =
-                          slot.hour == effectiveInitial.hour &&
-                          slot.minute == effectiveInitial.minute;
-                      return ListTile(
-                        title: Text(AppDateFormatter.timeRange12(slot)),
-                        trailing: selected
-                            ? Icon(
-                                Icons.check_circle,
-                                color: Theme.of(context).colorScheme.primary,
-                              )
-                            : null,
-                        onTap: () => Navigator.pop(context, slot),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _reprogramTurn(StudentTurn turn) async {
     if (!_canEditTurn(turn)) return;
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final scheduledDate = DateTime(
-      turn.scheduledAt.year,
-      turn.scheduledAt.month,
-      turn.scheduledAt.day,
-    );
-    final initialDate = scheduledDate.isBefore(today) ? today : scheduledDate;
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      firstDate: today,
-      lastDate: DateTime(now.year + 2),
-      initialDate: initialDate,
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => ReprogramarCitaScreen(turn: turn)),
     );
 
-    if (!mounted || pickedDate == null) return;
-
-    final pickedTime = await _pickTimeSlot(
-      initial: TimeOfDay.fromDateTime(turn.scheduledAt),
-    );
-    if (!mounted || pickedTime == null) return;
-
-    final scheduledAt = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
-
-    final request = AppointmentRequest(
-      category: turn.category,
-      context: turn.context,
-      scheduledAt: scheduledAt,
-    );
-
-    setState(() => _updatingTurnId = turn.id);
-
-    try {
-      final successMessage = await _api.updateAppointment(
-        appointmentId: turn.id,
-        request: request,
-      );
-      if (!mounted) return;
-      await AppToast.showSuccess(
-        context,
-        message: successMessage ?? 'Turno actualizado correctamente',
-      );
+    if (result == true) {
       await _loadTurns();
-    } catch (error) {
-      if (!mounted) return;
-      final message = error.toString().replaceFirst('Exception: ', '');
-      await AppToast.showError(context, message: message);
-    } finally {
-      if (mounted) {
-        setState(() => _updatingTurnId = null);
-      }
     }
   }
 

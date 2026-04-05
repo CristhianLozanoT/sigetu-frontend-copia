@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sigetu/core/utils/responsive.dart';
 import 'package:sigetu/features/student_dashboard/presentation/screens/perfil_screen.dart';
 import 'secretary_screen.dart';
+import 'secretary_history_screen.dart';
 
 class SecretaryHomeShell extends StatefulWidget {
   const SecretaryHomeShell({super.key});
@@ -14,6 +15,7 @@ class _SecretaryHomeShellState extends State<SecretaryHomeShell> {
   int _currentIndex = 0;
 
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
   ];
@@ -42,7 +44,8 @@ class _SecretaryHomeShellState extends State<SecretaryHomeShell> {
       index: _currentIndex,
       children: [
         _buildNavigator(0, const SecretaryScreen()),
-        _buildNavigator(1, const PerfilScreen()),
+        _buildNavigator(1, const SecretaryHistoryScreen()),
+        _buildNavigator(2, const PerfilScreen()),
       ],
     );
 
@@ -62,6 +65,11 @@ class _SecretaryHomeShellState extends State<SecretaryHomeShell> {
                   icon: Icon(Icons.calendar_month_outlined),
                   selectedIcon: Icon(Icons.calendar_month_rounded),
                   label: Text('Citas'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.history),
+                  selectedIcon: Icon(Icons.history_rounded),
+                  label: Text('Historial'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.person_outline_rounded),
@@ -89,6 +97,12 @@ class _SecretaryHomeShellState extends State<SecretaryHomeShell> {
             selectedIcon: Icon(Icons.calendar_month_rounded),
             label: 'Citas',
             tooltip: 'Lista de citas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            selectedIcon: Icon(Icons.history_rounded),
+            label: 'Historial',
+            tooltip: 'Historial de citas',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

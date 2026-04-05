@@ -281,7 +281,7 @@ class _GuestBanner extends StatelessWidget {
             width: double.infinity,
             child: FilledButton(
               onPressed: () =>
-                  Navigator.pushNamed(context, AuthRoutes.register),
+                  Navigator.of(context, rootNavigator: true).pushNamed(AuthRoutes.register),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
