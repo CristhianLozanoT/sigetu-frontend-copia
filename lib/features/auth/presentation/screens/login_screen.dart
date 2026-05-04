@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:sigetu/core/auth/auth_session.dart';
 import 'package:sigetu/core/utils/device_id.dart';
 import 'package:sigetu/core/utils/responsive.dart';
@@ -351,7 +352,10 @@ class _LoginScreenState extends State<LoginScreen>
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
-                                        onPressed: () {},
+                                        onPressed: () => Navigator.pushNamed(
+                                          context,
+                                          AuthRoutes.passwordResetRequest,
+                                        ),
                                         style: TextButton.styleFrom(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 4,
@@ -577,10 +581,10 @@ class _LogoBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
-      ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: SvgPicture.asset('assets/images/logo.svg', fit: BoxFit.cover),
+        ),
     );
   }
 }

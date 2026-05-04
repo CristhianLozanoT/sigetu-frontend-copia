@@ -290,6 +290,53 @@ class AuthApi {
     throw Exception('Error del servidor: ${response.statusCode}');
   }
 
+  Future<String?> requestPasswordReset({required String email}) async {
+    final url = Uri.parse('$baseUrl/auth/password-reset/request');
+
+    final response = await _httpRequest(
+      (client) => client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      ),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return _extractSuccessMessage(response);
+    }
+
+    if (response.statusCode == 400 || response.statusCode == 422) {
+      throw Exception(_extractErrorMessage(response));
+    }
+
+    throw Exception('Error del servidor: ${response.statusCode}');
+  }
+
+  Future<String?> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse('$baseUrl/auth/password-reset/confirm');
+
+    final response = await _httpRequest(
+      (client) => client.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': token, 'new_password': newPassword}),
+      ),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return _extractSuccessMessage(response);
+    }
+
+    if (response.statusCode == 400 || response.statusCode == 422) {
+      throw Exception(_extractErrorMessage(response));
+    }
+
+    throw Exception('Error del servidor: ${response.statusCode}');
+  }
+
   Future<http.Response> _httpRequest(
     Future<http.Response> Function(http.Client client) requestFn,
   ) {

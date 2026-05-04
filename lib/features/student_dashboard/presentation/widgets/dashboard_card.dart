@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class DashboardCard extends StatelessWidget {
   final String title;
@@ -54,12 +55,19 @@ class DashboardCard extends StatelessWidget {
             if (imagePath != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  imagePath!,
-                  height: 120,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+                child: imagePath!.endsWith('.svg')
+                    ? SvgPicture.asset(
+                        imagePath!,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.asset(
+                        imagePath!,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(height: 16),
             ],

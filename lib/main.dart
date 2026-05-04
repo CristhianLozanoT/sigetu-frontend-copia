@@ -33,6 +33,14 @@ class _MyAppState extends State<MyApp> {
   int _lastHandledInvalidation = 0;
   bool _isRedirectingToLogin = false;
 
+  String _resolveInitialRoute(Iterable<String> availableRoutes) {
+    final path = Uri.base.path;
+    if (path.isNotEmpty && path != '/' && availableRoutes.contains(path)) {
+      return path;
+    }
+    return AuthRoutes.login;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +97,14 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final routes = {
+      ...AuthRoutes.routes,
+      ...AdministrativeRoutes.routes,
+      ...AdmisionesMercadeoRoutes.routes,
+      ...SecretaryRoutes.routes,
+      ...StudentDashboardRoutes.routes,
+    };
+
     return MaterialApp(
       navigatorKey: _navigatorKey,
       scaffoldMessengerKey: _scaffoldMessengerKey,
@@ -99,15 +115,8 @@ class _MyAppState extends State<MyApp> {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
 
-      initialRoute: AuthRoutes.login,
-
-      routes: {
-        ...AuthRoutes.routes,
-        ...AdministrativeRoutes.routes,
-        ...AdmisionesMercadeoRoutes.routes,
-        ...SecretaryRoutes.routes,
-        ...StudentDashboardRoutes.routes,
-      },
+      initialRoute: _resolveInitialRoute(routes.keys),
+      routes: routes,
     );
   }
 }
