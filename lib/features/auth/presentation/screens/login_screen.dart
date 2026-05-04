@@ -14,6 +14,7 @@ import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
 import 'package:sigetu/features/student_dashboard/presentation/student_dashboard_routes.dart';
 import 'package:sigetu/core/notifications/fcm_token_sync.dart';
+import 'package:sigetu/core/notifications/notification_permission_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -121,9 +122,11 @@ class _LoginScreenState extends State<LoginScreen>
         refresh: loginResponse.refreshToken,
       );
 
-      // Sincronizar token FCM tras login exitoso
-      await FcmTokenSync.syncFcmToken();
-      FcmTokenSync.listenTokenRefresh();
+      await NotificationPermissionDialog.show(context);
+      try {
+        await FcmTokenSync.syncFcmToken();
+        FcmTokenSync.listenTokenRefresh();
+      } catch (_) {}
 
       final role = _extractRoleFromToken(loginResponse.accessToken);
       final isSecretaryRole =
@@ -177,9 +180,11 @@ class _LoginScreenState extends State<LoginScreen>
         guestDeviceId: id,
       );
 
-      // Sincronizar token FCM para invitados
-      await FcmTokenSync.syncFcmToken();
-      FcmTokenSync.listenTokenRefresh();
+      await NotificationPermissionDialog.show(context);
+      try {
+        await FcmTokenSync.syncFcmToken();
+        FcmTokenSync.listenTokenRefresh();
+      } catch (_) {}
 
       Navigator.pushReplacementNamed(context, StudentDashboardRoutes.dashboard);
     } catch (error) {

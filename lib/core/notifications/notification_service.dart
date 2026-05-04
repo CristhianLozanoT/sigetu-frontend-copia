@@ -52,8 +52,6 @@ class NotificationService {
           );
     }
 
-    await FirebaseMessaging.instance.requestPermission();
-
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _handleForegroundMessage(message);
     });
